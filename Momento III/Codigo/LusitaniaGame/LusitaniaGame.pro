@@ -11,7 +11,6 @@ CONFIG += c++17
 SOURCES += \
     agenteia.cpp \
     camara.cpp \
-    componentefisica.cpp \
     datosia.cpp \
     enemigo.cpp \
     entidad.cpp \
@@ -38,7 +37,6 @@ SOURCES += \
     sistemapercepcion.cpp \
     sistemarazonamiento.cpp \
     submarino.cpp \
-    tipos.cpp \
     torpedo.cpp \
     trayectoriaparabolica.cpp \
     vector2d.cpp \
