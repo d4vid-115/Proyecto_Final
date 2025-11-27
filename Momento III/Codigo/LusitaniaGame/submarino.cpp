@@ -12,7 +12,7 @@
 Submarino::Submarino()
     : Enemigo(Vector2D(100, 100), TipoEntidad::ENEMIGO_SUBMARINO),
     estado(EstadoSubmarino::PATRULLANDO),
-    agenteIA(nullptr),
+    agenteIA(new AgenteIA(this, nullptr)),
     puntoPatrulla(200, 100),
     tiempoEnPunto(0.0f),
     tiempoEsperaPunto(2.0f),
@@ -37,7 +37,7 @@ Submarino::Submarino()
 Submarino::Submarino(const Vector2D& pos)
     : Enemigo(pos, TipoEntidad::ENEMIGO_SUBMARINO),
     estado(EstadoSubmarino::PATRULLANDO),
-    agenteIA(nullptr),
+    agenteIA(new AgenteIA(this, nullptr)),
     puntoPatrulla(pos.x + 200, pos.y),
     tiempoEnPunto(0.0f),
     tiempoEsperaPunto(2.0f),
@@ -73,8 +73,35 @@ void Submarino::actualizar(float dt) {
         tiempoUltimoDisparo -= dt;
     }
 
-    // Usar IA basica por ahora (luego sera AgenteIA)
-    actualizarIABasica(dt);
+    if (agenteIA) {
+        agenteIA->setObjetivo(objetivo);
+        agenteIA->actualizar(dt);
+
+        // Obtener plan de la IA
+        if (agenteIA->debeDisparar()) {
+            // El submarino dispara
+            float angulo = agenteIA->getAnguloDisparo();
+            // (el disparo se maneja en el nivel)
+        }
+
+        // Actualizar estado segun IA
+        EstadoIA estadoIA = agenteIA->getEstadoActual();
+
+        switch(estadoIA) {
+        case EstadoIA::PATRULLANDO:
+            estado = EstadoSubmarino::PATRULLANDO;
+            break;
+        case EstadoIA::ACERCANDOSE:
+            estado = EstadoSubmarino::DETECTANDO;
+            break;
+        case EstadoIA::ATACANDO:
+            estado = EstadoSubmarino::ATACANDO;
+            break;
+        case EstadoIA::EVADIENDO:
+            estado = EstadoSubmarino::EVADIENDO;
+            break;
+        }
+    }
 
     // Actualizar posicion
     posicion += velocidad * dt;

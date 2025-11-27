@@ -3,6 +3,7 @@
 
 #include "enemigo.h"
 #include "torpedo.h"
+#include "agenteia.h"
 #include <QPainter>
 #include <vector>
 
