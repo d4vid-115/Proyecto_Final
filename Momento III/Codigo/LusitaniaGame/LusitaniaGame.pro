@@ -12,7 +12,6 @@ SOURCES += \
     agenteia.cpp \
     camara.cpp \
     componentefisica.cpp \
-    datosia.cpp \
     enemigo.cpp \
     entidad.cpp \
     escombro.cpp \
