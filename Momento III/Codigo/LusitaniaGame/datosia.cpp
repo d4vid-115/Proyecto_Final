@@ -1,3 +1,4 @@
 #include "datosia.h"
 
-DatosIA::DatosIA() {}
+// Archivo de implementacion vacio
+// Las estructuras estan completamente definidas en el header
