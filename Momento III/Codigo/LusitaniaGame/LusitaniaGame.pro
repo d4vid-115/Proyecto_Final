@@ -38,7 +38,6 @@ SOURCES += \
     sistemapercepcion.cpp \
     sistemarazonamiento.cpp \
     submarino.cpp \
-    tipos.cpp \
     torpedo.cpp \
     trayectoriaparabolica.cpp \
     vector2d.cpp \
