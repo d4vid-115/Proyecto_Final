@@ -11,6 +11,7 @@ CONFIG += c++17
 SOURCES += \
     agenteia.cpp \
     camara.cpp \
+    componentefisica.cpp \
     datosia.cpp \
     enemigo.cpp \
     entidad.cpp \
