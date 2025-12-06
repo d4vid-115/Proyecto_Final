@@ -19,6 +19,7 @@ SOURCES += \
     fisicaflotacion.cpp \
     fisicavortice.cpp \
     gamewidget.cpp \
+    gestorsprites.cpp \
     hud.cpp \
     jugador.cpp \
     main.cpp \
@@ -54,6 +55,7 @@ HEADERS += \
     fisicaflotacion.h \
     fisicavortice.h \
     gamewidget.h \
+    gestorsprites.h \
     hud.h \
     jugador.h \
     mainwindow.h \

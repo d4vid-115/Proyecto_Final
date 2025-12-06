@@ -87,6 +87,7 @@ void MotorJuego::actualizar(float dt) {
 
     case EstadoJuego::TRANSICION_NIVEL:
         // Transicion entre niveles
+        break;
     }
 }
 
@@ -107,6 +108,23 @@ void MotorJuego::cargarNivel(int numeroNivel) {
 
     // Crear nuevo nivel segun el numero
     numeroNivelActual = numeroNivel;
+
+    switch (numeroNivel) {
+    case 1:
+        nivelActual = new Nivel1Oceano();
+        break;
+    case 2:
+        nivelActual = new Nivel2Barco();
+        break;
+    case 3:
+        nivelActual = new Nivel3Submarino();
+        break;
+    default:
+        // Nivel inválido, cargar nivel 1
+        nivelActual = new Nivel1Oceano();
+        numeroNivelActual = 1;
+        break;
+    }
 
     // Cambiar estado a jugando
     cambiarEstado(EstadoJuego::JUGANDO);

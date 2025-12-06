@@ -6,55 +6,51 @@
 #include <QKeyEvent>
 #include <QPainter>
 #include <QElapsedTimer>
+#include <QSet>
 #include "motorjuego.h"
 #include "hud.h"
 
-// GameWidget - Widget principal del juego
-// Maneja: bucle de juego, input, renderizado
 class GameWidget : public QWidget {
     Q_OBJECT
 
 private:
     // ===== MOTOR DEL JUEGO =====
-    MotorJuego* motor;
+    MotorJuego* motorJuego;
 
     // ===== BUCLE DEL JUEGO =====
-    QTimer* timerJuego;
-    QElapsedTimer tiempoElapsed;
-    float deltaTiempo;                  // Delta time en segundos
-    int fps;                            // FPS objetivo (60)
-    int intervaloMs;                    // Intervalo en ms (16.67ms ≈ 60 FPS)
+    QTimer* timer;
+    QElapsedTimer tiempoFrame;
+    float deltaTime;
+    int fps;
+    int fpsObjetivo;
 
     // ===== HUD =====
     HUD* hud;
 
     // ===== INPUT =====
-    bool teclas[256];                   // Estado de teclas
+    QSet<int> teclasPresionadas;
 
-    // Movimiento del jugador
-    void actualizarMovimientoJugador(float dt);
+    // ===== ESTADO =====
+    bool juegoIniciado;
 
-    // ===== RENDERIZADO =====
-    void renderizarJuego(QPainter& painter);
-    void renderizarMenu(QPainter& painter);
-    void renderizarPausa(QPainter& painter);
-    void renderizarGameOver(QPainter& painter);
-    void renderizarVictoria(QPainter& painter);
+    // Metodos privados
+    void procesarInput();
+    void manejarMovimientoJugador();
 
 public:
-    // ========== CONSTRUCTOR ==========
     explicit GameWidget(QWidget *parent = nullptr);
     ~GameWidget();
 
     // ========== CONTROL DEL JUEGO ==========
-    void iniciarJuego();
+    void iniciarJuego(int nivel);
     void pausarJuego();
     void reanudarJuego();
-    void reiniciarNivel();
+    void reiniciarJuego();
     void volverAlMenu();
 
     // ========== GETTERS =====
     int getFPS() const;
+    float getDeltaTime() const;
 
 protected:
     // ========== EVENTOS Qt ==========

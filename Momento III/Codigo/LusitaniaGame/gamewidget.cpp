@@ -231,7 +231,7 @@ void GameWidget::manejarMovimientoJugador() {
 
     // Habilidad especial (Shift)
     if (teclasPresionadas.contains(Qt::Key_Shift)) {
-        jugador->activarHabilidad();
+        jugador->usarHabilidad();
     }
 }
 

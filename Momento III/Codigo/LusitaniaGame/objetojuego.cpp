@@ -165,52 +165,43 @@ void ObjetoJuego::renderizar(QPainter& painter) {
 
     switch (tipoObjeto) {
     case TipoObjeto::MALETA:
-        // Maleta marron
+    {
         painter.setBrush(QColor(139, 69, 19));
         painter.drawRect(posicion.x, posicion.y, ancho, alto);
 
-        // Detalles de la maleta
         painter.setPen(QPen(QColor(101, 50, 10), 2));
         painter.drawLine(posicion.x + ancho/2, posicion.y,
                          posicion.x + ancho/2, posicion.y + alto);
         painter.drawLine(posicion.x, posicion.y + alto/2,
                          posicion.x + ancho, posicion.y + alto/2);
 
-        // Manija
         painter.setBrush(QColor(180, 100, 30));
         painter.drawRect(posicion.x + ancho/2 - 10, posicion.y - 5, 20, 5);
-        break;
+    }
+    break;
 
     case TipoObjeto::SILLA:
-        // Silla de madera
+    {
         painter.setBrush(QColor(160, 82, 45));
 
-        // Asiento
         painter.drawRect(posicion.x, posicion.y + alto - 24, ancho, 8);
-
-        // Respaldo
         painter.drawRect(posicion.x + 4, posicion.y, 4, alto - 20);
-
-        // Patas (4)
         painter.drawRect(posicion.x + 2, posicion.y + alto - 16, 4, 16);
         painter.drawRect(posicion.x + ancho - 6, posicion.y + alto - 16, 4, 16);
         painter.drawRect(posicion.x + 2, posicion.y + alto - 8, 4, 8);
         painter.drawRect(posicion.x + ancho - 6, posicion.y + alto - 8, 4, 8);
-        break;
+    }
+    break;
 
     case TipoObjeto::LAMPARA:
-        // Lampara colgante
-
-        // Cuerda/cadena hasta el anclaje
+    {
         painter.setPen(QPen(QColor(100, 100, 100), 2));
         painter.drawLine(posicion.x + ancho/2, posicion.y,
                          puntoAnclaje.x, puntoAnclaje.y);
 
-        // Pantalla de lampara (amarilla)
         painter.setBrush(QColor(255, 215, 0));
         painter.setPen(Qt::black);
 
-        // Forma de cono invertido
         QPolygon pantalla;
         pantalla << QPoint(posicion.x + ancho/2 - 12, posicion.y + 8)
                  << QPoint(posicion.x + ancho/2 + 12, posicion.y + 8)
@@ -218,31 +209,29 @@ void ObjetoJuego::renderizar(QPainter& painter) {
                  << QPoint(posicion.x + ancho/2 - 16, posicion.y + alto);
         painter.drawPolygon(pantalla);
 
-        // Bombilla (circulo blanco brillante)
         painter.setBrush(QColor(255, 255, 200));
         painter.drawEllipse(posicion.x + ancho/2 - 6, posicion.y + 12, 12, 12);
 
-        // Halo de luz
         painter.setBrush(QColor(255, 255, 150, 50));
         painter.setPen(Qt::NoPen);
         painter.drawEllipse(posicion.x + ancho/2 - 20, posicion.y + 10, 40, 40);
-        break;
+    }
+    break;
 
     case TipoObjeto::ESCOMBRO_PEQUENO:
-        // Escombro pequeño (gris)
+    {
         painter.setBrush(QColor(120, 120, 120));
         painter.drawEllipse(posicion.x, posicion.y, ancho, alto);
 
-        // Textura irregular
         painter.setBrush(QColor(90, 90, 90));
         painter.drawEllipse(posicion.x + 5, posicion.y + 3, 8, 8);
-        break;
+    }
+    break;
 
     case TipoObjeto::ESCOMBRO_GRANDE:
-        // Escombro grande (gris oscuro, irregular)
+    {
         painter.setBrush(QColor(80, 80, 80));
 
-        // Forma irregular (poligono)
         QPolygon escombro;
         escombro << QPoint(posicion.x, posicion.y + alto/2)
                  << QPoint(posicion.x + ancho/3, posicion.y)
@@ -252,16 +241,16 @@ void ObjetoJuego::renderizar(QPainter& painter) {
                  << QPoint(posicion.x + ancho/2, posicion.y + alto);
         painter.drawPolygon(escombro);
 
-        // Grietas
         painter.setPen(QPen(QColor(50, 50, 50), 2));
         painter.drawLine(posicion.x + 10, posicion.y + 10,
                          posicion.x + 30, posicion.y + 40);
-        break;
+    }
+    break;
     }
 
     painter.restore();
 
-    // Indicador de velocidad (flecha si se mueve rapido)
+    // Indicador de velocidad
     if (velocidad.magnitud() > 50.0f && !suspendido) {
         painter.setPen(QPen(QColor(255, 0, 0), 2));
         float angulo = std::atan2(velocidad.y, velocidad.x);

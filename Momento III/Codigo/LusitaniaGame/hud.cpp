@@ -1,4 +1,5 @@
 #include "hud.h"
+#include "motorjuego.h"
 #include <QFont>
 
 // ========== CONSTRUCTOR ==========

@@ -1,9 +1,11 @@
 #ifndef TIPOS_H
 #define TIPOS_H
 
+#include <QString>
+
 // ============================================
 // ENUMERACIONES DEL JUEGO
-// Agrupan constantes relacionadas y evitan "magic numbers"
+// Agrupan constantes relacionadas
 // ============================================
 
 // Estado general del juego

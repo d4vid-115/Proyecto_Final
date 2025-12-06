@@ -4,6 +4,7 @@
 #include <QPainter>
 #include <QString>
 #include "nivel.h"
+#include "jugador.h"
 
 // HUD - Heads-Up Display
 // Muestra informacion del juego en pantalla

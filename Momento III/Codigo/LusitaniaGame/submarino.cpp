@@ -73,20 +73,14 @@ void Submarino::actualizar(float dt) {
         tiempoUltimoDisparo -= dt;
     }
 
-    if (agenteIA) {
+    if (agenteIA && objetivo) {
         agenteIA->setObjetivo(objetivo);
         agenteIA->actualizar(dt);
 
-        // Obtener plan de la IA
-        if (agenteIA->debeDisparar()) {
-            // El submarino dispara
-            float angulo = agenteIA->getAnguloDisparo();
-            // (el disparo se maneja en el nivel)
-        }
-
-        // Actualizar estado segun IA
+        // Obtener estado de la IA
         EstadoIA estadoIA = agenteIA->getEstadoActual();
 
+        // Mapear estado IA a estado submarino
         switch(estadoIA) {
         case EstadoIA::PATRULLANDO:
             estado = EstadoSubmarino::PATRULLANDO;
@@ -101,6 +95,9 @@ void Submarino::actualizar(float dt) {
             estado = EstadoSubmarino::EVADIENDO;
             break;
         }
+    } else {
+        // Sin IA, usar comportamiento basico
+        actualizarIABasica(dt);
     }
 
     // Actualizar posicion

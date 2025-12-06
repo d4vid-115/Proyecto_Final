@@ -55,6 +55,7 @@ public:
     // ========== GETTERS ==========
     TipoNPC getTipoNPC() const;
     EstadoNPC getEstadoNPC() const;
+    EstadoNPC getEstado() const { return estadoNPC; }
     bool estaRescatado() const;
     bool estaConsciente() const;
     float getResistencia() const;

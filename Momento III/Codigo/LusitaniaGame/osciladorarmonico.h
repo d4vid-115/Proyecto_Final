@@ -16,9 +16,6 @@ private:
     float posicionBase;       // y₀ - Posicion central
     float tiempoTotal;        // Tiempo acumulado
 
-    // Calcula el desplazamiento en un momento dado
-    float calcularDesplazamiento(float t) const;
-
 public:
     // ========== CONSTRUCTORES ==========
     OsciladorArmonico();
@@ -28,6 +25,9 @@ public:
     // ========== METODOS HEREDADOS ==========
     Vector2D calcular(Entidad* e, float dt) override;
     void aplicar(Entidad* e) override;
+
+    // Calcula el desplazamiento en un momento dado
+    float calcularDesplazamiento(float t) const;
 
     // ========== GETTERS Y SETTERS ==========
     float getAmplitud() const;

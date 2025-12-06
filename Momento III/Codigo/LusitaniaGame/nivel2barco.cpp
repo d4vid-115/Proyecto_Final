@@ -180,6 +180,7 @@ void Nivel2Barco::actualizar(float dt) {
 }
 
 void Nivel2Barco::actualizarInclinacion(float dt) {
+
     // Aumentar inclinacion gradualmente
     anguloBarco += velocidadInclinacion * dt;
 
