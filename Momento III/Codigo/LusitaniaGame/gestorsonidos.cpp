@@ -175,12 +175,14 @@ void GestorSonidos::reproducirMusica(const QString& nombre, bool loop) {
 void GestorSonidos::pausarMusica() {
     if (reproductorMusica) {
         reproductorMusica->pause();
+        qDebug() << "[GestorSonidos] Musica pausada";
     }
 }
 
 void GestorSonidos::reanudarMusica() {
-    if (reproductorMusica && musicaHabilitada) {
+    if (reproductorMusica) {
         reproductorMusica->play();
+        qDebug() << "[GestorSonidos] Musica reanudada";
     }
 }
 

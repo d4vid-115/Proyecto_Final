@@ -1,37 +1,32 @@
 #ifndef HUD_H
 #define HUD_H
 
-#include <QPainter>
-#include <QString>
 #include "nivel.h"
 #include "jugador.h"
+#include "nivel2barco.h"
+#include "nivel3submarino.h"
+#include <QPainter>
 
-// HUD - Heads-Up Display
-// Muestra informacion del juego en pantalla
 class HUD {
 private:
-    // Colores y estilos
     QColor colorFondo;
     QColor colorTexto;
     QColor colorVidaAlta;
     QColor colorVidaMedia;
     QColor colorVidaBaja;
 
-    // Metodos de renderizado
     void renderizarBarraVida(QPainter& painter, Jugador* jugador, int x, int y);
     void renderizarBarraTiempo(QPainter& painter, Nivel* nivel, int x, int y);
     void renderizarInformacion(QPainter& painter, Nivel* nivel, int fps);
-    void renderizarMiniMapa(QPainter& painter, Nivel* nivel, int x, int y);
+    void renderizarInfoNivel2(QPainter& painter, Nivel2Barco* nivel2, int fps);
+    void renderizarInfoNivel3(QPainter& painter, Nivel3Submarino* nivel3, Jugador* jugador, int fps);
 
 public:
-    // ========== CONSTRUCTOR ==========
     HUD();
     ~HUD();
 
-    // ========== RENDERIZADO PRINCIPAL ==========
     void renderizar(QPainter& painter, Nivel* nivel, int fps);
 
-    // ========== CONFIGURACION =====
     void setColorTexto(const QColor& color);
     void setColorFondo(const QColor& color);
 };

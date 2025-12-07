@@ -6,29 +6,27 @@
 #include "movimientocircular.h"
 #include <QPainter>
 
-// ObjetoJuego - Objetos dinamicos en el Nivel 2
-// Afectados por la inclinacion del barco: caen, ruedan, oscilan
-// Tipos: maletas, sillas, lamparas, escombros, etc
 class ObjetoJuego : public Entidad {
 private:
-    TipoObjeto tipoObjeto;        // MALETA, SILLA, LAMPARA, etc.
+    TipoObjeto tipoObjeto;
 
     // Fisica segun tipo
-    float masa;                    // Masa del objeto
-    float friccion;                // Friccion con el suelo
-    bool enSuelo;                  // Si esta tocando el suelo
-    bool suspendido;               // Si esta colgando (lampara)
+    float masa;
+    float friccion;
+    bool enSuelo;
+    bool suspendido;
 
     // Movimiento por inclinacion
-    float anguloBarco;             // Angulo de inclinacion del barco (0-30°)
-    float aceleracionDeslizamiento; // Gravedad × sin(angulo)
+    float anguloBarco;
+    float aceleracionDeslizamiento;
 
     // Fisica de lampara (MCU)
     MovimientoCircular* movCircular;
-    Vector2D puntoAnclaje;         // Punto donde cuelga
+    Vector2D puntoAnclaje;
+    float longitudCuerda;
 
     // Daño
-    float danioContacto;           // Daño que causa al golpear
+    float danioContacto;
 
     void configurarSegunTipo();
     void actualizarPorInclinacion(float dt);
@@ -46,11 +44,13 @@ public:
 
     // ========== METODOS ESPECIFICOS ==========
     void setAnguloBarco(float angulo);
-    void colgar(const Vector2D& anclaje); // Para lamparas
-    void soltar();                         // Dejar de colgar
+    void setLongitudCuerda(float longitud) { longitudCuerda = longitud; }
+    void colgar(const Vector2D& anclaje);
+    void soltar();
 
     // ========== GETTERS ==========
     TipoObjeto getTipoObjeto() const;
+    TipoObjeto getTipo() const { return tipoObjeto; }
     float getMasa() const;
     bool estaSuspendido() const;
     bool estaEnSuelo() const;

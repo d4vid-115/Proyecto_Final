@@ -34,39 +34,32 @@ Escombro::~Escombro() {
 // ========== CONFIGURACION ==========
 
 void Escombro::configurarDensidad() {
-    // Configurar densidad segun el tipo de escombro
-
     switch (tipoEscombro) {
     case TipoEscombro::MADERA:
-        // Madera: ρ = 0.6 (flota rapido)
-        densidad = 0.6f;
+        densidad = 0.6f;  // Flota
         velocidadTerminal = 80.0f;
-        setDimensiones(32, 16); // Tabla alargada
+        setDimensiones(32, 16);
         break;
 
     case TipoEscombro::METAL_PESADO:
-        // Metal: ρ = 7.8 (se hunde muy rapido)
-        densidad = 7.8f;
-        velocidadTerminal = 150.0f;
-        setDimensiones(20, 20); // Compacto y pesado
+        densidad = 3.0f;  // Se hunde rapido
+        velocidadTerminal = 200.0f;
+        setDimensiones(20, 20);
         break;
 
     case TipoEscombro::SALVAVIDAS:
-        // Salvavidas: ρ = 0.3 (flota muy rapido)
-        densidad = 0.3f;
+        densidad = 0.3f;  // Flota muy rapido
         velocidadTerminal = 120.0f;
-        setDimensiones(28, 28); // Circular
+        setDimensiones(28, 28);
         break;
 
     case TipoEscombro::NEUTRO:
-        // Neutro: ρ = 1.0 (flotacion neutra)
-        densidad = 1.0f;
+        densidad = 1.0f;  // Neutro
         velocidadTerminal = 50.0f;
         setDimensiones(24, 24);
         break;
     }
 
-    // Crear fisica de flotacion
     flotacion = new FisicaFlotacion(densidad);
     flotacion->setVelocidadTerminal(velocidadTerminal);
     setFisica(flotacion);
@@ -77,19 +70,31 @@ void Escombro::configurarDensidad() {
 void Escombro::actualizar(float dt) {
     if (!activo) return;
 
-    // Solo aplicar fisica si esta en el agua
-    if (enAgua && flotacion) {
-        flotacion->aplicar(this);
-    } else {
-        // Si no esta en agua, simplemente cae por gravedad
-        velocidad.y += 9.8f * dt;
-        posicion += velocidad * dt;
+    // ===== APLICAR GRAVEDAD SEGUN DENSIDAD =====
+    float gravedad = 98.0f;  // Gravedad del agua (mas fuerte que en aire)
+
+    // Fuerza de flotacion = gravedad × (densidad - 1.0)
+    // Si densidad < 1.0 - flota (fuerza negativa)
+    // Si densidad > 1.0 - se hunde (fuerza positiva)
+    float fuerzaFlotacion = gravedad * (densidad - 1.0f);
+
+    velocidad.y += fuerzaFlotacion * dt;
+
+    // Limitar velocidad terminal
+    if (velocidad.y > velocidadTerminal) {
+        velocidad.y = velocidadTerminal;
+    } else if (velocidad.y < -velocidadTerminal) {
+        velocidad.y = -velocidadTerminal;
     }
 
+    // Fricción del agua (resistencia)
+    velocidad *= 0.98f;
+
+    posicion += velocidad * dt;
     actualizarColision();
 
-    // Destruir si sale muy abajo o muy arriba de la pantalla
-    if (posicion.y > 1000.0f || posicion.y < -500.0f) {
+    // Destruir si sale muy lejos
+    if (posicion.y > 4000.0f || posicion.y < -500.0f) {
         destruir();
     }
 }
@@ -97,98 +102,79 @@ void Escombro::actualizar(float dt) {
 void Escombro::renderizar(QPainter& painter) {
     if (!activo) return;
 
-    painter.setPen(Qt::black);
+    painter.setPen(QPen(Qt::black, 2));
 
-    // Renderizar segun el tipo
     switch (tipoEscombro) {
     case TipoEscombro::MADERA:
-        // Tabla de madera (marron)
         painter.setBrush(QColor(139, 69, 19));
         painter.drawRect(posicion.x, posicion.y, ancho, alto);
 
-        // Vetas de la madera
         painter.setPen(QColor(101, 50, 10));
-        painter.drawLine(posicion.x + 5, posicion.y,
-                         posicion.x + 5, posicion.y + alto);
-        painter.drawLine(posicion.x + ancho - 5, posicion.y,
-                         posicion.x + ancho - 5, posicion.y + alto);
+        painter.drawLine(posicion.x, posicion.y + alto/2,
+                         posicion.x + ancho, posicion.y + alto/2);
         break;
 
     case TipoEscombro::METAL_PESADO:
-        // Metal pesado (gris oscuro)
-        painter.setBrush(QColor(70, 70, 70));
+        painter.setBrush(QColor(100, 100, 100));
         painter.drawRect(posicion.x, posicion.y, ancho, alto);
 
-        // Brillo metalico
-        painter.setBrush(QColor(120, 120, 120, 100));
-        painter.drawRect(posicion.x + 2, posicion.y + 2,
-                         ancho - 4, alto - 4);
+        painter.setBrush(QColor(150, 150, 150));
+        painter.drawEllipse(posicion.x + 3, posicion.y + 3, 5, 5);
+        painter.drawEllipse(posicion.x + ancho - 8, posicion.y + 3, 5, 5);
         break;
 
     case TipoEscombro::SALVAVIDAS:
-        // Salvavidas (naranja con blanco)
-        painter.setBrush(QColor(255, 140, 0));
+        painter.setBrush(QColor(255, 100, 0));
         painter.drawEllipse(posicion.x, posicion.y, ancho, alto);
 
-        // Rayas blancas
-        painter.setBrush(Qt::white);
-        painter.drawPie(posicion.x, posicion.y, ancho, alto, 0, 90 * 16);
-        painter.drawPie(posicion.x, posicion.y, ancho, alto, 180 * 16, 90 * 16);
+        painter.setBrush(QColor(20, 60, 100, 150));
+        painter.drawEllipse(posicion.x + ancho/4, posicion.y + alto/4, ancho/2, alto/2);
+
+        painter.setPen(QPen(Qt::white, 4));
+        painter.drawLine(posicion.x, posicion.y + alto/2, posicion.x + ancho/4, posicion.y + alto/2);
+        painter.drawLine(posicion.x + 3*ancho/4, posicion.y + alto/2, posicion.x + ancho, posicion.y + alto/2);
         break;
 
     case TipoEscombro::NEUTRO:
-        // Neutro (azul grisaceo)
         painter.setBrush(QColor(100, 150, 180));
         painter.drawRect(posicion.x, posicion.y, ancho, alto);
         break;
     }
 
-    // Indicador de flotacion (flecha)
-    if (enAgua) {
-        painter.setPen(QPen(Qt::white, 2));
-        if (estaFlotando()) {
-            // Flecha hacia arriba
-            painter.drawLine(posicion.x + ancho/2, posicion.y - 5,
-                             posicion.x + ancho/2, posicion.y - 15);
-            painter.drawLine(posicion.x + ancho/2 - 3, posicion.y - 12,
-                             posicion.x + ancho/2, posicion.y - 15);
-            painter.drawLine(posicion.x + ancho/2 + 3, posicion.y - 12,
-                             posicion.x + ancho/2, posicion.y - 15);
-        } else if (estaHundiendo()) {
-            // Flecha hacia abajo
-            painter.drawLine(posicion.x + ancho/2, posicion.y + alto + 5,
-                             posicion.x + ancho/2, posicion.y + alto + 15);
-            painter.drawLine(posicion.x + ancho/2 - 3, posicion.y + alto + 12,
-                             posicion.x + ancho/2, posicion.y + alto + 15);
-            painter.drawLine(posicion.x + ancho/2 + 3, posicion.y + alto + 12,
-                             posicion.x + ancho/2, posicion.y + alto + 15);
-        }
+    // Indicador de direccion (flecha)
+    painter.setPen(QPen(Qt::white, 2));
+    if (velocidad.y < -10.0f) {
+        // Flecha arriba (flotando)
+        painter.drawLine(posicion.x + ancho/2, posicion.y - 5,
+                         posicion.x + ancho/2, posicion.y - 15);
+        painter.drawLine(posicion.x + ancho/2 - 3, posicion.y - 12,
+                         posicion.x + ancho/2, posicion.y - 15);
+        painter.drawLine(posicion.x + ancho/2 + 3, posicion.y - 12,
+                         posicion.x + ancho/2, posicion.y - 15);
+    } else if (velocidad.y > 10.0f) {
+        // Flecha abajo (hundiendose)
+        painter.drawLine(posicion.x + ancho/2, posicion.y + alto + 5,
+                         posicion.x + ancho/2, posicion.y + alto + 15);
+        painter.drawLine(posicion.x + ancho/2 - 3, posicion.y + alto + 12,
+                         posicion.x + ancho/2, posicion.y + alto + 15);
+        painter.drawLine(posicion.x + ancho/2 + 3, posicion.y + alto + 12,
+                         posicion.x + ancho/2, posicion.y + alto + 15);
     }
 }
 
 void Escombro::onColision(Entidad* otra) {
     if (!otra) return;
-
-    // Interaccion con el jugador
-    if (otra->getTipo() == TipoEntidad::JUGADOR) {
-        // El jugador puede agarrarse a escombros flotantes
-        if (estaFlotando()) {
-            // Dar puntos por agarrarse a escombro flotante
-        }
-    }
 }
 
 // ========== METODOS ESPECIFICOS ==========
 
 void Escombro::flotar() {
-    // Forzar flotacion (cambiar a densidad baja)
     if (flotacion) {
         flotacion->setDensidadObjeto(0.5f);
     }
 }
 
 void Escombro::hundir() {
-    // Forzar hundimiento (cambiar a densidad alta)
     if (flotacion) {
         flotacion->setDensidadObjeto(2.0f);
     }

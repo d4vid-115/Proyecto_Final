@@ -15,32 +15,27 @@ Nivel1Oceano::Nivel1Oceano()
     posicionBarco(400, 200),
     oscilacionBarco(nullptr),
     tiempoSpawn(0.0f),
-    intervaloSpawn(20.0f),
-    maxSubmarinos(3),
+    intervaloSpawn(12.0f),
+    maxSubmarinos(5),  //
     submarinosDestruidos(0),
     torpedosEvadidos(0) {
 
-    // Configurar nivel
-    anchoNivel = 2400;
-    altoNivel = 1200;
-    tiempoLimite = 180.0f;  // 3 minutos
+    anchoNivel = 1600;
+    altoNivel = 800;
+    tiempoLimite = 90.0f;
 
-    // Actualizar limites de camara
     camara->setLimites(Vector2D(0, 0), Vector2D(anchoNivel, altoNivel));
     camara->setTieneScroll(true);
 
-    // Inicializar
     inicializar();
 }
 
 Nivel1Oceano::~Nivel1Oceano() {
-    // Limpiar oscilacion del barco
     if (oscilacionBarco) {
         delete oscilacionBarco;
         oscilacionBarco = nullptr;
     }
 
-    // Los submarinos y torpedos son eliminados por motorFisica
     submarinos.clear();
     torpedos.clear();
 }
@@ -48,19 +43,17 @@ Nivel1Oceano::~Nivel1Oceano() {
 // ========== INICIALIZACION ==========
 
 void Nivel1Oceano::inicializar() {
-    // Crear jugador (el jugador controla un barco pequeño)
     jugador = new Jugador(Vector2D(400, 500));
     jugador->setDimensiones(48, 32);
     motorFisica->agregarEntidad(jugador);
 
-    // Configurar fisica del barco Lusitania (oscilacion)
     oscilacionBarco = new OsciladorArmonico(15.0f, 2.0f * M_PI / 3.0f, 0.0f);
     oscilacionBarco->setPosicionBase(posicionBarco.y);
 
-    // Spawnear submarinos iniciales
+    // Spawnear 2 submarinos iniciales
+    spawnearSubmarino();
     spawnearSubmarino();
 
-    // Configurar gravedad (desactivada en este nivel)
     motorFisica->setGravedadActiva(false);
 }
 
@@ -69,28 +62,19 @@ void Nivel1Oceano::inicializar() {
 void Nivel1Oceano::actualizar(float dt) {
     if (completado || fallado) return;
 
-    // Actualizar tiempo
     tiempoTranscurrido += dt;
 
-    // Actualizar oscilacion del barco Lusitania
     if (oscilacionBarco) {
-        // El barco oscila pero no se mueve (es visual)
         posicionBarco.y = oscilacionBarco->calcularDesplazamiento(tiempoTranscurrido);
     }
 
-    // Actualizar fisica
     motorFisica->actualizar(dt);
 
-    // Actualizar submarinos
     actualizarSubmarinos(dt);
-
-    // Actualizar torpedos
     actualizarTorpedos(dt);
-
-    // Verificar colisiones de torpedos
     verificarColisionesTorpedos();
 
-    // Spawning de submarinos
+    // Spawning mas rapido
     tiempoSpawn += dt;
     if (tiempoSpawn >= intervaloSpawn) {
         if ((int)submarinos.size() < maxSubmarinos) {
@@ -99,12 +83,10 @@ void Nivel1Oceano::actualizar(float dt) {
         tiempoSpawn = 0.0f;
     }
 
-    // Actualizar camara (seguir al jugador)
     if (jugador) {
         camara->seguirObjetivo(jugador->getPosicion(), dt);
     }
 
-    // Verificar condiciones
     if (verificarVictoria()) {
         completado = true;
     }
@@ -115,24 +97,20 @@ void Nivel1Oceano::actualizar(float dt) {
 }
 
 void Nivel1Oceano::actualizarSubmarinos(float /*dt*/) {
-    // Actualizar cada submarino y hacer que disparen
     auto it = submarinos.begin();
 
     while (it != submarinos.end()) {
         Submarino* sub = *it;
 
         if (!sub || !sub->estaActivo()) {
-            // Submarino destruido
             it = submarinos.erase(it);
             submarinosDestruidos++;
-            agregarPuntos(100); // 100 puntos por submarino
+            agregarPuntos(100);
             continue;
         }
 
-        // Configurar jugador como objetivo
         sub->setObjetivo(jugador);
 
-        // Verificar si debe disparar
         if (sub->puedeDisparar() && sub->getEstado() == EstadoSubmarino::ATACANDO) {
             Torpedo* torpedo = sub->dispararTorpedo();
             if (torpedo) {
@@ -146,7 +124,6 @@ void Nivel1Oceano::actualizarSubmarinos(float /*dt*/) {
 }
 
 void Nivel1Oceano::actualizarTorpedos(float /*dt*/) {
-    // Limpiar torpedos inactivos
     auto it = torpedos.begin();
 
     while (it != torpedos.end()) {
@@ -155,7 +132,7 @@ void Nivel1Oceano::actualizarTorpedos(float /*dt*/) {
         if (!torpedo || !torpedo->estaActivo()) {
             it = torpedos.erase(it);
             torpedosEvadidos++;
-            agregarPuntos(10); // 10 puntos por evadir
+            agregarPuntos(10);
         } else {
             ++it;
         }
@@ -163,14 +140,10 @@ void Nivel1Oceano::actualizarTorpedos(float /*dt*/) {
 }
 
 void Nivel1Oceano::verificarColisionesTorpedos() {
-    // Verificar si los torpedos golpean al jugador
     for (auto* torpedo : torpedos) {
         if (torpedo && torpedo->estaActivo() && jugador) {
             if (torpedo->colisionaCon(jugador)) {
-                // Jugador recibe daño
                 jugador->recibirDanio(25.0f);
-
-                // Destruir torpedo
                 torpedo->destruir();
             }
         }
@@ -178,9 +151,10 @@ void Nivel1Oceano::verificarColisionesTorpedos() {
 }
 
 void Nivel1Oceano::spawnearSubmarino() {
-    // Spawnear submarino en posicion aleatoria fuera de pantalla
-    float x = (rand() % 2 == 0) ? -100.0f : anchoNivel + 100.0f;
-    float y = 100.0f + (rand() % 400);
+    Vector2D posCamara = camara->getPosicion();
+
+    float x = (rand() % 2 == 0) ? posCamara.x - 50.0f : posCamara.x + 850.0f;
+    float y = posCamara.y + 100.0f + (rand() % 400);
 
     Submarino* sub = new Submarino(Vector2D(x, y));
     sub->setObjetivo(jugador);
@@ -197,54 +171,43 @@ void Nivel1Oceano::renderizar(QPainter& painter) {
 
     painter.save();
 
-    // ===== FONDO: OCEANO ANIMADO =====
-    GestorSprites* gestor = GestorSprites::obtenerInstancia();
+    // Fondo oceano claro
+    QLinearGradient gradient(0, 0, 0, 600);
+    gradient.setColorAt(0, QColor(50, 150, 220));
+    gradient.setColorAt(0.5, QColor(20, 100, 180));
+    gradient.setColorAt(1, QColor(0, 50, 120));
+    painter.fillRect(0, 0, 800, 600, gradient);
 
-    // Obtener frame actual de la animacion del oceano
-    QPixmap fondoOceano = gestor->getFrameAnimacion("oceano", 0.016f);
-
-    if (!fondoOceano.isNull()) {
-        // Escalar fondo para cubrir toda la pantalla
-        QPixmap fondoEscalado = fondoOceano.scaled(800, 600,
-                                                   Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-        painter.drawPixmap(0, 0, fondoEscalado);
-    } else {
-        // Fallback: color solido si no hay sprite
-        painter.fillRect(0, 0, 800, 600, QColor(0, 50, 100));
-    }
-
-    // ===== RENDERIZAR CON CAMARA =====
     Vector2D offsetCamara = camara->getPosicion();
     painter.translate(-offsetCamara.x, -offsetCamara.y);
 
-    // ===== BARCO LUSITANIA (sprite) =====
-    QPixmap spriteLusitania = gestor->getSprite("lusitania");
+    // Barco Lusitania
+    painter.setBrush(QColor(100, 50, 0));
+    painter.setPen(QPen(Qt::black, 2));
 
-    if (!spriteLusitania.isNull()) {
-        // Escalar barco a tamaño apropiado (200x80 aprox)
-        QPixmap barcoEscalado = spriteLusitania.scaled(200, 80,
-                                                       Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    painter.drawRect(posicionBarco.x - 100, posicionBarco.y - 40, 200, 80);
 
-        // Dibujar centrado en posicionBarco
-        painter.drawPixmap(
-            posicionBarco.x - 100,  // Centrar horizontalmente
-            posicionBarco.y - 40,   // Centrar verticalmente
-            barcoEscalado
-            );
-    } else {
-        // Fallback: dibujo manual original
-        painter.setBrush(QColor(100, 50, 0));
-        painter.setPen(Qt::black);
-        painter.drawRect(posicionBarco.x - 100, posicionBarco.y - 40, 200, 80);
+    QPolygon proa;
+    proa << QPoint(posicionBarco.x + 100, posicionBarco.y - 40)
+         << QPoint(posicionBarco.x + 120, posicionBarco.y)
+         << QPoint(posicionBarco.x + 100, posicionBarco.y + 40);
+    painter.drawPolygon(proa);
 
-        // Chimeneas
-        painter.setBrush(QColor(50, 25, 0));
-        painter.drawRect(posicionBarco.x - 60, posicionBarco.y - 60, 20, 20);
-        painter.drawRect(posicionBarco.x - 20, posicionBarco.y - 60, 20, 20);
-        painter.drawRect(posicionBarco.x + 20, posicionBarco.y - 60, 20, 20);
-    }
+    painter.setBrush(QColor(80, 40, 0));
+    painter.drawRect(posicionBarco.x - 90, posicionBarco.y - 60, 180, 20);
 
-    // ===== RENDERIZAR ENTIDADES (submarinos, torpedos, jugador) =====
+    painter.setBrush(QColor(50, 25, 0));
+    painter.drawRect(posicionBarco.x - 60, posicionBarco.y - 80, 20, 20);
+    painter.drawRect(posicionBarco.x - 10, posicionBarco.y - 80, 20, 20);
+    painter.drawRect(posicionBarco.x + 40, posicionBarco.y - 80, 20, 20);
+
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(100, 100, 100, 150));
+    painter.drawEllipse(posicionBarco.x - 55, posicionBarco.y - 95, 10, 15);
+    painter.drawEllipse(posicionBarco.x - 5, posicionBarco.y - 95, 10, 15);
+    painter.drawEllipse(posicionBarco.x + 45, posicionBarco.y - 95, 10, 15);
+
+    // Renderizar entidades
     for (auto* entidad : motorFisica->getEntidades()) {
         if (entidad && entidad->estaActivo()) {
             entidad->renderizar(painter);
@@ -257,10 +220,8 @@ void Nivel1Oceano::renderizar(QPainter& painter) {
 // ========== REINICIAR ==========
 
 void Nivel1Oceano::reiniciar() {
-    // Limpiar todo
     limpiar();
 
-    // Reiniciar variables
     completado = false;
     fallado = false;
     tiempoTranscurrido = 0.0f;
@@ -272,7 +233,6 @@ void Nivel1Oceano::reiniciar() {
     submarinos.clear();
     torpedos.clear();
 
-    // Reinicializar
     motorFisica = new MotorFisica();
     camara = new Camara(800, 600);
     camara->setLimites(Vector2D(0, 0), Vector2D(anchoNivel, altoNivel));
@@ -283,17 +243,12 @@ void Nivel1Oceano::reiniciar() {
 // ========== CONDICIONES ==========
 
 bool Nivel1Oceano::verificarVictoria() {
-    // Victoria: sobrevivir 3 minutos
     return tiempoTranscurrido >= tiempoLimite;
 }
 
 bool Nivel1Oceano::verificarDerrota() {
-    // Derrota: quedarse sin vidas
     return jugador && jugador->estaMuerto();
 }
 
-// ========== INPUT ==========
-
 void Nivel1Oceano::manejarInput(int /*tecla*/, bool /*presionada*/) {
-    // Este metodo sera llamado por GameWidget
 }

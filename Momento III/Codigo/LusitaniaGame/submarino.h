@@ -64,10 +64,12 @@ public:
     EstadoSubmarino getEstado() const;
     float getProfundidad() const;
     int getTorpedosDisparados() const;
+    float getCooldownDisparo() const { return cooldownDisparo; }
 
     // ========== SETTERS ==========
     void setEstado(EstadoSubmarino est);
     void setProfundidad(float prof);
+    void setCooldownDisparo(float cd) { cooldownDisparo = cd; }
 };
 
 #endif // SUBMARINO_H

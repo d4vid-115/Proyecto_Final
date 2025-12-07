@@ -1,7 +1,8 @@
 #include "gamewidget.h"
 #include "jugador.h"
+#include "nivel3submarino.h"
+#include "gestorsonidos.h"
 #include <QPainter>
-#include <QMessageBox>
 
 // ========== CONSTRUCTOR ==========
 
@@ -15,37 +16,28 @@ GameWidget::GameWidget(QWidget* parent)
     hud(nullptr),
     juegoIniciado(false) {
 
-    // Configurar widget
     setFocusPolicy(Qt::StrongFocus);
     setMinimumSize(800, 600);
 
-    // Obtener motor del juego
     motorJuego = MotorJuego::obtenerInstancia();
-
-    // Crear HUD
     hud = new HUD();
 
-    // Crear timer del bucle del juego
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, &GameWidget::actualizar);
 
-    // Configurar FPS
     int intervalo = 1000 / fpsObjetivo;
     timer->setInterval(intervalo);
 
-    // Iniciar tiempo
     tiempoFrame.start();
 }
 
 GameWidget::~GameWidget() {
-    // Detener timer
     if (timer) {
         timer->stop();
         delete timer;
         timer = nullptr;
     }
 
-    // Eliminar HUD
     if (hud) {
         delete hud;
         hud = nullptr;
@@ -59,32 +51,35 @@ GameWidget::~GameWidget() {
 void GameWidget::iniciarJuego(int nivel) {
     if (!motorJuego) return;
 
-    // Cargar nivel
     motorJuego->cargarNivel(nivel);
 
-    // Iniciar timer
     timer->start();
     juegoIniciado = true;
 
-    // Resetear tiempo
     tiempoFrame.restart();
 }
 
 void GameWidget::pausarJuego() {
     if (motorJuego) {
         motorJuego->pausar();
+        GestorSonidos::obtenerInstancia()->pausarMusica();
     }
 }
 
 void GameWidget::reanudarJuego() {
     if (motorJuego) {
         motorJuego->reanudar();
+        GestorSonidos::obtenerInstancia()->reanudarMusica();
     }
 }
 
 void GameWidget::reiniciarJuego() {
     if (motorJuego) {
         motorJuego->reiniciarNivel();
+
+        int nivelActual = motorJuego->getNumeroNivelActual();
+        QString musicaNivel = QString("nivel%1").arg(nivelActual);
+        GestorSonidos::obtenerInstancia()->reproducirMusica(musicaNivel);
     }
 }
 
@@ -97,6 +92,7 @@ void GameWidget::volverAlMenu() {
     }
 
     teclasPresionadas.clear();
+    GestorSonidos::obtenerInstancia()->reproducirMusica("menu");
 }
 
 // ========== BUCLE PRINCIPAL ==========
@@ -104,59 +100,64 @@ void GameWidget::volverAlMenu() {
 void GameWidget::actualizar() {
     if (!motorJuego || !juegoIniciado) return;
 
-    // Calcular delta time
     deltaTime = tiempoFrame.elapsed() / 1000.0f;
     tiempoFrame.restart();
 
-    // Calcular FPS
     if (deltaTime > 0.0f) {
         fps = (int)(1.0f / deltaTime);
     }
 
-    // Procesar input
     procesarInput();
 
-    // Actualizar motor del juego
     motorJuego->actualizar(deltaTime);
 
-    // Verificar condiciones de fin
     Nivel* nivel = motorJuego->getNivelActual();
     if (nivel) {
         if (nivel->estaCompletado()) {
-            // ¡Nivel completado!
             timer->stop();
 
             int puntos = nivel->getPuntuacion();
             int nivelNum = motorJuego->getNumeroNivelActual();
 
-            // Emitir señal de victoria
             emit victoria(puntos, nivelNum);
 
-            // Cargar siguiente nivel
             motorJuego->siguienteNivel();
 
             if (motorJuego->getEstado() == EstadoJuego::VICTORIA) {
-                // Victoria total - ya emitido arriba
                 volverAlMenu();
             } else {
-                // Continuar al siguiente nivel
+                int siguienteNivel = motorJuego->getNumeroNivelActual();
+                QString musicaNivel = QString("nivel%1").arg(siguienteNivel);
+                GestorSonidos::obtenerInstancia()->reproducirMusica(musicaNivel);
+
                 timer->start();
             }
         }
 
+        // ===== VERIFICAR DERROTA CON DELAY PARA ANIMACION =====
         if (nivel->haFallado()) {
-            // Game Over
-            timer->stop();
+            Jugador* jugador = nivel->getJugador();
 
-            int puntos = nivel->getPuntuacion();
-            int nivelNum = motorJuego->getNumeroNivelActual();
-
-            // Emitir señal de derrota
-            emit derrota(puntos, nivelNum);
+            // Si es nivel 3 y el jugador esta en animacion de muerte, esperar
+            Nivel3Submarino* nivel3 = dynamic_cast<Nivel3Submarino*>(nivel);
+            if (nivel3 && jugador && jugador->estaEnAnimacionMuerte()) {
+                // Esperar 3 segundos para que termine la animacion
+                if (jugador->getTiempoMuerte() >= 3.0f) {
+                    timer->stop();
+                    int puntos = nivel->getPuntuacion();
+                    int nivelNum = motorJuego->getNumeroNivelActual();
+                    emit derrota(puntos, nivelNum);
+                }
+            } else {
+                // Otros niveles o muerte inmediata
+                timer->stop();
+                int puntos = nivel->getPuntuacion();
+                int nivelNum = motorJuego->getNumeroNivelActual();
+                emit derrota(puntos, nivelNum);
+            }
         }
     }
 
-    // Redibujar
     update();
 }
 
@@ -181,7 +182,6 @@ void GameWidget::procesarInput() {
         teclasPresionadas.remove(Qt::Key_P);
     }
 
-    // Manejar movimiento del jugador
     manejarMovimientoJugador();
 }
 
@@ -193,6 +193,18 @@ void GameWidget::manejarMovimientoJugador() {
 
     Jugador* jugador = nivel->getJugador();
     if (!jugador) return;
+
+    // No permitir movimiento si esta muriendo
+    if (jugador->estaEnAnimacionMuerte()) {
+        return;
+    }
+
+    // Verificar si los controles estan bloqueados (Nivel 3)
+    Nivel3Submarino* nivel3 = dynamic_cast<Nivel3Submarino*>(nivel);
+    if (nivel3 && nivel3->estanControlsBloqueados()) {
+        // Controles bloqueados por vortice - NO permitir input
+        return;
+    }
 
     // Vector de direccion
     Vector2D direccion(0, 0);
@@ -218,11 +230,28 @@ void GameWidget::manejarMovimientoJugador() {
         direccion.x += 1.0f;
     }
 
-    // Aplicar movimiento
-    if (direccion.magnitud() > 0.0f) {
-        jugador->mover(direccion, deltaTime);
+    // ===== PARA NIVEL 3: AGREGAR A LA VELOCIDAD EN LUGAR DE SOBRESCRIBIR =====
+    if (nivel3) {
+        if (direccion.magnitud() > 0.0f) {
+            Vector2D direccionNorm = direccion.normalizado();
+            Vector2D velocidadDeseada = direccionNorm * jugador->getVelocidadBase();
+
+            // En nivel 3, sumamos a la velocidad actual (para que los vortices afecten)
+            Vector2D velActual = jugador->getVelocidad();
+            Vector2D nuevaVel = velActual * 0.85f + velocidadDeseada * 0.15f;  // Blend suave
+            jugador->setVelocidad(nuevaVel);
+        } else {
+            // Si no hay input, aplicar friccion
+            Vector2D velActual = jugador->getVelocidad();
+            jugador->setVelocidad(velActual * 0.92f);
+        }
     } else {
-        jugador->detener();
+        // Otros niveles: comportamiento normal
+        if (direccion.magnitud() > 0.0f) {
+            jugador->mover(direccion, deltaTime);
+        } else {
+            jugador->detener();
+        }
     }
 
     // Habilidad especial (Shift)
@@ -240,27 +269,22 @@ void GameWidget::paintEvent(QPaintEvent* event) {
     painter.setRenderHint(QPainter::Antialiasing);
 
     if (!juegoIniciado || !motorJuego) {
-        // Pantalla de inicio
         painter.fillRect(rect(), QColor(20, 20, 40));
         painter.setPen(Qt::white);
         painter.setFont(QFont("Arial", 24, QFont::Bold));
         painter.drawText(rect(), Qt::AlignCenter,
-                         "El Naufragio del Lusitania\n\n"
-                         "Presiona M para Menu");
+                         "El Naufragio del Lusitania\n\nPresiona M para Menu");
         return;
     }
 
-    // Renderizar nivel actual
     Nivel* nivel = motorJuego->getNivelActual();
     if (nivel) {
         nivel->renderizar(painter);
 
-        // Renderizar HUD
         if (hud) {
             hud->renderizar(painter, nivel, fps);
         }
 
-        // Mensaje de pausa
         if (motorJuego->estaPausado()) {
             painter.fillRect(rect(), QColor(0, 0, 0, 150));
             painter.setPen(Qt::white);
@@ -276,7 +300,6 @@ void GameWidget::keyPressEvent(QKeyEvent* event) {
     int tecla = event->key();
     teclasPresionadas.insert(tecla);
 
-    // Pasar al nivel para input adicional
     if (motorJuego) {
         Nivel* nivel = motorJuego->getNivelActual();
         if (nivel) {
@@ -291,7 +314,6 @@ void GameWidget::keyReleaseEvent(QKeyEvent* event) {
     int tecla = event->key();
     teclasPresionadas.remove(tecla);
 
-    // Pasar al nivel
     if (motorJuego) {
         Nivel* nivel = motorJuego->getNivelActual();
         if (nivel) {

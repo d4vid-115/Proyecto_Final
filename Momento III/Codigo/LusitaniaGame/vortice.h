@@ -17,7 +17,7 @@ private:
     float tiempoVida;                 // Tiempo total de existencia (8s)
     float tiempoActual;               // Tiempo transcurrido
     float rotacionActual;             // Angulo de rotacion para animacion
-    float rangoAtraccion;             // ← AGREGAR
+    float rangoAtraccion;
 
     // Particulas visuales para el efecto espiral
     struct Particula {

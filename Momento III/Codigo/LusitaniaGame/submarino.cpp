@@ -1,5 +1,4 @@
 #include "submarino.h"
-#include "gestorsprites.h"
 #include "torpedo.h"
 #include <cmath>
 #include <cstdlib>
@@ -19,13 +18,12 @@ Submarino::Submarino()
     tiempoEnPunto(0.0f),
     tiempoEsperaPunto(2.0f),
     tiempoUltimoDisparo(0.0f),
-    cooldownDisparo(3.0f),
+    cooldownDisparo(1.5f),
     torpedosDisparados(0),
     maxTorpedos(5),
     profundidad(100.0f),
     moviendose(true) {
 
-    // Configurar submarino
     setDimensiones(64, 32);
     salud = 150.0f;
     saludMaxima = 150.0f;
@@ -44,7 +42,7 @@ Submarino::Submarino(const Vector2D& pos)
     tiempoEnPunto(0.0f),
     tiempoEsperaPunto(2.0f),
     tiempoUltimoDisparo(0.0f),
-    cooldownDisparo(3.0f),
+    cooldownDisparo(1.5f),
     torpedosDisparados(0),
     maxTorpedos(5),
     profundidad(100.0f),
@@ -70,7 +68,6 @@ Submarino::~Submarino() {
 void Submarino::actualizar(float dt) {
     if (!activo) return;
 
-    // Actualizar cooldown de disparo
     if (tiempoUltimoDisparo > 0.0f) {
         tiempoUltimoDisparo -= dt;
     }
@@ -79,10 +76,8 @@ void Submarino::actualizar(float dt) {
         agenteIA->setObjetivo(objetivo);
         agenteIA->actualizar(dt);
 
-        // Obtener estado de la IA
         EstadoIA estadoIA = agenteIA->getEstadoActual();
 
-        // Mapear estado IA a estado submarino
         switch(estadoIA) {
         case EstadoIA::PATRULLANDO:
             estado = EstadoSubmarino::PATRULLANDO;
@@ -98,11 +93,9 @@ void Submarino::actualizar(float dt) {
             break;
         }
     } else {
-        // Sin IA, usar comportamiento basico
         actualizarIABasica(dt);
     }
 
-    // Actualizar posicion
     posicion += velocidad * dt;
     actualizarColision();
 }
@@ -111,10 +104,6 @@ void Submarino::renderizar(QPainter& painter) {
     if (!activo) return;
 
     painter.save();
-
-    // Obtener sprite
-    GestorSprites* gestor = GestorSprites::obtenerInstancia();
-    QPixmap spriteSubmarino = gestor->getSprite("submarino");
 
     // Calcular angulo de orientacion
     float angulo = 0.0f;
@@ -126,24 +115,50 @@ void Submarino::renderizar(QPainter& painter) {
     painter.translate(posicion.x + ancho/2, posicion.y + alto/2);
     painter.rotate(angulo);
 
-    if (!spriteSubmarino.isNull()) {
-        // Usar sprite
-        QPixmap submarinEscalado = spriteSubmarino.scaled(ancho, alto,
-                                                          Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    // ===== DIBUJO MANUAL DEL SUBMARINO =====
 
-        painter.drawPixmap(-ancho/2, -alto/2, submarinEscalado);
-    } else {
-        // Fallback: dibujo manual
-        painter.setBrush(QColor(50, 50, 50));
-        painter.setPen(Qt::black);
-        painter.drawEllipse(-ancho/2, -alto/2, ancho, alto);
+    // Casco principal (elipse gris oscuro)
+    painter.setBrush(QColor(50, 50, 50));
+    painter.setPen(QPen(Qt::black, 2));
+    painter.drawEllipse(-ancho/2, -alto/2, ancho, alto);
 
-        // Torre de mando
-        painter.setBrush(QColor(40, 40, 40));
-        painter.drawRect(-10, -alto/2 - 8, 20, 8);
-    }
+    // Torre de mando (conning tower)
+    painter.setBrush(QColor(40, 40, 40));
+    painter.drawRect(-12, -alto/2 - 10, 24, 10);
 
-    // Indicador de estado (luz)
+    // Periscopio
+    painter.setPen(QPen(QColor(60, 60, 60), 2));
+    painter.drawLine(0, -alto/2 - 10, 0, -alto/2 - 18);
+
+    // Antena
+    painter.drawLine(-8, -alto/2 - 10, -8, -alto/2 - 15);
+
+    // Helice (en la parte trasera)
+    painter.setBrush(QColor(100, 100, 100));
+    painter.drawEllipse(-ancho/2 - 6, -6, 8, 12);
+
+    // Timones
+    painter.setBrush(QColor(70, 70, 70));
+    QPolygon timonSuperior;
+    timonSuperior << QPoint(-ancho/2 + 5, -alto/2)
+                  << QPoint(-ancho/2 - 5, -alto/2 - 8)
+                  << QPoint(-ancho/2 + 10, -alto/2);
+    painter.drawPolygon(timonSuperior);
+
+    QPolygon timonInferior;
+    timonInferior << QPoint(-ancho/2 + 5, alto/2)
+                  << QPoint(-ancho/2 - 5, alto/2 + 8)
+                  << QPoint(-ancho/2 + 10, alto/2);
+    painter.drawPolygon(timonInferior);
+
+    // Ventanas/portillas (3 circulos pequeños)
+    painter.setBrush(QColor(100, 150, 200, 150));
+    painter.setPen(QPen(QColor(30, 30, 30), 1));
+    painter.drawEllipse(10, -4, 6, 6);
+    painter.drawEllipse(20, -4, 6, 6);
+    painter.drawEllipse(30, -4, 6, 6);
+
+    // Indicador de estado (luz de navegación)
     QColor colorEstado;
     switch (estado) {
     case EstadoSubmarino::PATRULLANDO:
@@ -162,7 +177,7 @@ void Submarino::renderizar(QPainter& painter) {
 
     painter.setBrush(colorEstado);
     painter.setPen(Qt::black);
-    painter.drawEllipse(ancho/2 - 8, -4, 8, 8);
+    painter.drawEllipse(ancho/2 - 10, -5, 8, 8);
 
     painter.restore();
 
@@ -170,6 +185,7 @@ void Submarino::renderizar(QPainter& painter) {
     float porcentajeSalud = salud / saludMaxima;
 
     painter.setBrush(QColor(255, 0, 0));
+    painter.setPen(Qt::NoPen);
     painter.drawRect(posicion.x, posicion.y - 10, ancho, 5);
 
     painter.setBrush(QColor(0, 255, 0));
@@ -177,24 +193,20 @@ void Submarino::renderizar(QPainter& painter) {
 }
 
 void Submarino::patrullar(float dt) {
-    // Moverse hacia el punto de patrulla
     Vector2D direccion = puntoPatrulla - posicion;
     float distancia = direccion.magnitud();
 
     if (distancia < 20.0f) {
-        // Llego al punto, esperar
         tiempoEnPunto += dt;
         velocidad = Vector2D(0, 0);
         moviendose = false;
 
         if (tiempoEnPunto >= tiempoEsperaPunto) {
-            // Elegir nuevo punto
             elegirNuevoPuntoPatrulla();
             tiempoEnPunto = 0.0f;
             moviendose = true;
         }
     } else {
-        // Moverse hacia el punto
         velocidad = direccion.normalizado() * velocidadBase;
         moviendose = true;
     }
@@ -203,20 +215,15 @@ void Submarino::patrullar(float dt) {
 void Submarino::perseguir(Entidad* objetivo, float dt) {
     if (!objetivo) return;
 
-    // Calcular direccion hacia el objetivo
     Vector2D direccion = objetivo->getPosicion() - posicion;
     float distancia = direccion.magnitud();
 
-    // Mantener distancia de ataque (no acercarse demasiado)
     if (distancia > rangoAtaque * 0.8f) {
-        // Acercarse
         velocidad = direccion.normalizado() * velocidadBase;
     } else if (distancia < rangoAtaque * 0.5f) {
-        // Alejarse (evadir)
         velocidad = direccion.normalizado() * (-velocidadBase * 0.5f);
         estado = EstadoSubmarino::EVADIENDO;
     } else {
-        // Mantener distancia
         velocidad = Vector2D(0, 0);
     }
 }
@@ -224,65 +231,48 @@ void Submarino::perseguir(Entidad* objetivo, float dt) {
 void Submarino::atacar(Entidad* objetivo, float dt) {
     if (!objetivo || !puedeDisparar()) return;
 
-    // El disparo se maneja externamente en el nivel
-    // Aqui solo actualizamos el estado
-
-    // Mantener posicion de ataque
     Vector2D direccion = objetivo->getPosicion() - posicion;
     float distancia = direccion.magnitud();
 
     if (distancia > rangoAtaque) {
-        // Objetivo fuera de rango, perseguir
         estado = EstadoSubmarino::DETECTANDO;
         perseguir(objetivo, dt);
     } else {
-        // Mantener posicion
-        velocidad *= 0.95f; // Frenar gradualmente
+        velocidad *= 0.95f;
     }
 }
 
-// ========== IA BASICA (TEMPORAL) ==========
+// ========== IA BASICA ==========
 
 void Submarino::actualizarIABasica(float dt) {
-    // Comportamiento basico hasta implementar AgenteIA completo
-
-    // Verificar si hay objetivo
     if (objetivo && puedeDetectar(objetivo)) {
-        // Tiene objetivo en rango
         float distancia = posicion.distanciaA(objetivo->getPosicion());
 
         if (distancia < 100.0f) {
-            // Muy cerca - evadir
             estado = EstadoSubmarino::EVADIENDO;
             Vector2D direccion = posicion - objetivo->getPosicion();
             velocidad = direccion.normalizado() * velocidadBase;
         } else if (distancia < rangoAtaque) {
-            // En rango de ataque
             estado = EstadoSubmarino::ATACANDO;
             atacar(objetivo, dt);
         } else {
-            // Detectado pero lejos - perseguir
             estado = EstadoSubmarino::DETECTANDO;
             perseguir(objetivo, dt);
         }
     } else {
-        // Sin objetivo - patrullar
         estado = EstadoSubmarino::PATRULLANDO;
         patrullar(dt);
     }
 }
 
 void Submarino::elegirNuevoPuntoPatrulla() {
-    // Elegir punto aleatorio en un area
-    float x = posicion.x + (rand() % 400) - 200; // ±200 px
-    float y = profundidad + (rand() % 60) - 30;  // ±30 px de profundidad
+    float x = posicion.x + (rand() % 400) - 200;
+    float y = profundidad + (rand() % 60) - 30;
 
     puntoPatrulla = Vector2D(x, y);
 }
 
 float Submarino::calcularAnguloInterceptacion(const Vector2D& objetivo) {
-    // Calculo simple de angulo hacia el objetivo
-    // (mas adelante el AgenteIA hara prediccion avanzada)
     Vector2D direccion = objetivo - posicion;
     return std::atan2(direccion.y, direccion.x);
 }
@@ -292,14 +282,11 @@ float Submarino::calcularAnguloInterceptacion(const Vector2D& objetivo) {
 Torpedo* Submarino::dispararTorpedo() {
     if (!puedeDisparar() || !objetivo) return nullptr;
 
-    // Calcular angulo de disparo
     float angulo = calcularAnguloInterceptacion(objetivo->getPosicion());
 
-    // Crear torpedo
     Vector2D posicionDisparo = posicion + Vector2D(ancho, alto/2);
     Torpedo* torpedo = new Torpedo(posicionDisparo, angulo, 200.0f);
 
-    // Actualizar estado
     tiempoUltimoDisparo = cooldownDisparo;
     torpedosDisparados++;
 

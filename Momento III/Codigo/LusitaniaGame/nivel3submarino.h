@@ -17,28 +17,35 @@ private:
     float profundidadObjetivo;          // 0 px (superficie)
     float profundidadActual;            // Profundidad del jugador
 
-    // ===== ENTIDADES DEL NIVEL =====
-    std::vector<Vortice*> vortices;
-    std::vector<Escombro*> escombros;
-
     // ===== SPAWNING =====
     float tiempoSpawnVortice;
     float intervaloSpawnVortice;        // Cada 15 segundos
     float tiempoSpawnEscombro;
     float intervaloSpawnEscombro;       // Cada 3 segundos
-
     int maxVortices;                    // Maximo 2 vortices simultaneos
 
     // ===== CONDICIONES =====
     int escombrosEvitados;
     int vorticesEvitados;
 
+    // ===== ENTIDADES DEL NIVEL =====
+    std::vector<Vortice*> vortices;
+    std::vector<Escombro*> escombros;
+
+    // Control de objetos activos
+    Escombro* objetoActivo;
+    float tiempoObjetoActivo;
+    float duracionEfectoObjeto;
+    bool controlsBloqueados;
+    float tiempoSinOxigeno;
+
     // Metodos auxiliares
     void spawnearVortice();
     void spawnearEscombro();
     void actualizarVortices(float dt);
     void actualizarEscombros(float dt);
-    void aplicarFuerzasVortice();
+    void aplicarFuerzasVortice(float dt);
+    void aplicarEfectoEscombro(Escombro* escombro);
 
 public:
     // ========== CONSTRUCTOR ==========
@@ -53,6 +60,7 @@ public:
 
     bool verificarVictoria() override;
     bool verificarDerrota() override;
+    bool estanControlsBloqueados() const;
 
     void manejarInput(int tecla, bool presionada) override;
 };

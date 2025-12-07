@@ -19,6 +19,7 @@ ObjetoJuego::ObjetoJuego()
     aceleracionDeslizamiento(0.0f),
     movCircular(nullptr),
     puntoAnclaje(0, 0),
+    longitudCuerda(50.0f),
     danioContacto(15.0f) {
 
     setDimensiones(32, 24);
@@ -36,6 +37,7 @@ ObjetoJuego::ObjetoJuego(const Vector2D& pos, TipoObjeto tipo)
     aceleracionDeslizamiento(0.0f),
     movCircular(nullptr),
     puntoAnclaje(0, 0),
+    longitudCuerda(50.0f),
     danioContacto(15.0f) {
 
     setDimensiones(32, 24);
@@ -80,7 +82,7 @@ void ObjetoJuego::configurarSegunTipo() {
         suspendido = true;
 
         // Crear fisica MCU para oscilacion
-        movCircular = new MovimientoCircular(60.0f, 0.5f, posicion);
+        movCircular = new MovimientoCircular(longitudCuerda, 0.5f, posicion);
         setFisica(movCircular);
         puntoAnclaje = posicion;
         break;
@@ -195,6 +197,7 @@ void ObjetoJuego::renderizar(QPainter& painter) {
 
     case TipoObjeto::LAMPARA:
     {
+        // Dibujar cuerda
         painter.setPen(QPen(QColor(100, 100, 100), 2));
         painter.drawLine(posicion.x + ancho/2, posicion.y,
                          puntoAnclaje.x, puntoAnclaje.y);
@@ -308,12 +311,14 @@ void ObjetoJuego::colgar(const Vector2D& anclaje) {
     enSuelo = false;
     puntoAnclaje = anclaje;
 
-    // Crear fisica MCU
+    // Crear fisica MCU con la longitud de cuerda especificada
     if (!movCircular) {
-        float radio = posicion.distanciaA(anclaje);
-        movCircular = new MovimientoCircular(radio, 0.5f, anclaje);
+        movCircular = new MovimientoCircular(longitudCuerda, 0.5f, anclaje);
         movCircular->setCentroPivote(anclaje);
         setFisica(movCircular);
+
+        // Posicionar el objeto colgando
+        posicion = anclaje + Vector2D(0, longitudCuerda);
     }
 }
 

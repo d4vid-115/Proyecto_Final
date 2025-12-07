@@ -1,5 +1,4 @@
 #include "torpedo.h"
-#include "gestorsprites.h"
 #include <cmath>
 #include <QColor>
 
@@ -17,9 +16,8 @@ Torpedo::Torpedo()
     tiempoActual(0.0f),
     trayectoria(nullptr) {
 
-    setDimensiones(16, 8); // Torpedo mas pequeño
+    setDimensiones(24, 8);
 
-    // Crear fisica parabolica
     trayectoria = new TrayectoriaParabolica(0, 0, 50.0f);
     setFisica(trayectoria);
 }
@@ -32,9 +30,8 @@ Torpedo::Torpedo(const Vector2D& pos, float angulo, float velocidad)
     tiempoActual(0.0f),
     trayectoria(nullptr) {
 
-    setDimensiones(16, 8);
+    setDimensiones(24, 8);
 
-    // Crear y configurar trayectoria
     configurarTrayectoria(pos, angulo, velocidad);
 }
 
@@ -47,16 +44,13 @@ Torpedo::~Torpedo() {
 void Torpedo::actualizar(float dt) {
     if (!activo) return;
 
-    // Incrementar tiempo
     tiempoActual += dt;
 
-    // Desactivar si excede tiempo de vida
     if (tiempoActual >= tiempoVida) {
         destruir();
         return;
     }
 
-    // Aplicar fisica parabolica
     if (trayectoria) {
         trayectoria->aplicar(this);
     }
@@ -67,9 +61,6 @@ void Torpedo::actualizar(float dt) {
 void Torpedo::renderizar(QPainter& painter) {
     if (!activo) return;
 
-    GestorSprites* gestor = GestorSprites::obtenerInstancia();
-    QPixmap spriteTorpedo = gestor->getSprite("torpedo");
-
     // Calcular angulo de rotacion basado en velocidad
     float anguloRender = std::atan2(velocidad.y, velocidad.x);
 
@@ -79,43 +70,67 @@ void Torpedo::renderizar(QPainter& painter) {
     painter.translate(posicion.x + ancho/2, posicion.y + alto/2);
     painter.rotate(anguloRender * 180.0f / M_PI);
 
-    if (!spriteTorpedo.isNull()) {
-        // Usar sprite
-        QPixmap torpedoEscalado = spriteTorpedo.scaled(ancho * 2, alto * 2,
-                                                       Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    // ===== DIBUJO MANUAL DEL TORPEDO =====
 
-        painter.drawPixmap(-ancho, -alto, torpedoEscalado);
-    } else {
-        // Fallback: dibujo manual
-        painter.setBrush(QColor(255, 50, 50));
-        painter.setPen(Qt::black);
-        painter.drawEllipse(-ancho/2, -alto/2, ancho, alto);
+    // Cuerpo principal (cilindro rojo)
+    painter.setBrush(QColor(180, 50, 50));
+    painter.setPen(QPen(Qt::black, 2));
+    painter.drawRect(-ancho/2, -alto/2, ancho - 6, alto);
 
-        // Punta del torpedo
-        QPolygon punta;
-        punta << QPoint(ancho/2, 0)
-              << QPoint(ancho/2 + 8, -4)
-              << QPoint(ancho/2 + 8, 4);
-        painter.setBrush(QColor(150, 30, 30));
-        painter.drawPolygon(punta);
-    }
+    // Punta conica (ojiva)
+    QPolygon punta;
+    punta << QPoint(ancho/2 - 6, -alto/2)
+          << QPoint(ancho/2 + 6, 0)
+          << QPoint(ancho/2 - 6, alto/2);
+    painter.setBrush(QColor(150, 30, 30));
+    painter.drawPolygon(punta);
+
+    // Aletas estabilizadoras (4 aletas)
+    painter.setBrush(QColor(100, 30, 30));
+
+    // Aleta superior
+    QPolygon aletaSuperior;
+    aletaSuperior << QPoint(-ancho/2 + 8, -alto/2)
+                  << QPoint(-ancho/2 + 2, -alto/2 - 6)
+                  << QPoint(-ancho/2 + 14, -alto/2);
+    painter.drawPolygon(aletaSuperior);
+
+    // Aleta inferior
+    QPolygon aletaInferior;
+    aletaInferior << QPoint(-ancho/2 + 8, alto/2)
+                  << QPoint(-ancho/2 + 2, alto/2 + 6)
+                  << QPoint(-ancho/2 + 14, alto/2);
+    painter.drawPolygon(aletaInferior);
+
+    // Helice en la cola
+    painter.setBrush(QColor(120, 120, 120));
+    painter.drawEllipse(-ancho/2 - 3, -4, 6, 8);
+
+    // Detalles: lineas de union
+    painter.setPen(QPen(QColor(100, 20, 20), 1));
+    painter.drawLine(-ancho/2 + 4, 0, ancho/2 - 6, 0);
 
     painter.restore();
 
-    // Estela (trail)
-    painter.setPen(QPen(QColor(255, 255, 255, 150), 2));
-    painter.drawLine(
-        posicion.x, posicion.y,
-        posicion.x - velocidad.x * 0.05f,
-        posicion.y - velocidad.y * 0.05f
-        );
+    // Estela de burbujas (trail effect)
+    painter.setPen(Qt::NoPen);
+    for (int i = 0; i < 5; i++) {
+        float offsetX = -velocidad.x * 0.01f * i;
+        float offsetY = -velocidad.y * 0.01f * i;
+        int alpha = 200 - (i * 40);
+
+        painter.setBrush(QColor(255, 255, 255, alpha));
+        painter.drawEllipse(
+            posicion.x + offsetX - 2,
+            posicion.y + offsetY - 2,
+            4, 4
+            );
+    }
 }
 
 void Torpedo::onColision(Entidad* otra) {
     if (!otra) return;
 
-    // El torpedo se destruye al colisionar con cualquier cosa
-    // excepto con el enemigo que lo disparo
     if (otra->getTipo() != TipoEntidad::ENEMIGO_SUBMARINO) {
         destruir();
     }
@@ -127,13 +142,9 @@ void Torpedo::configurarTrayectoria(const Vector2D& posInicial, float angulo, fl
     anguloDisparo = angulo;
     velocidadInicial = vel;
 
-    // Calcular componentes de velocidad
-    // vx = v × cos(θ)
-    // vy = v × sin(θ)
     float vx = velocidadInicial * std::cos(angulo);
     float vy = velocidadInicial * std::sin(angulo);
 
-    // Crear nueva fisica parabolica
     trayectoria = new TrayectoriaParabolica(vx, vy, 50.0f);
     trayectoria->setPosicionInicial(posInicial);
     trayectoria->reiniciarTiempo();

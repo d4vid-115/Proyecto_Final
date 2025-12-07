@@ -24,7 +24,6 @@ Vortice::Vortice()
     inicializarParticulas();
 }
 
-
 Vortice::Vortice(const Vector2D& centro)
     : Entidad(centro, TipoEntidad::VORTICE),
     fisicaVortice(nullptr),
@@ -48,7 +47,7 @@ Vortice::Vortice(const Vector2D& centro, float radio, float vida)
     tiempoVida(vida),
     tiempoActual(0.0f),
     rotacionActual(0.0f),
-    rangoAtraccion(radio * 2.0f) {
+    rangoAtraccion(radio * 2.5f) {
 
     setDimensiones(radio * 2, radio * 2);
     fisicaVortice = new FisicaVortice(centro, radio, 0.15f);
@@ -62,11 +61,10 @@ Vortice::~Vortice() {
 // ========== INICIALIZACION ==========
 
 void Vortice::inicializarParticulas() {
-    // Crear 20 particulas distribuidas en espiral
     for (int i = 0; i < 20; i++) {
-        particulas[i].angulo = (i * 18.0f) * M_PI / 180.0f; // 18° entre cada una
-        particulas[i].distancia = (i / 20.0f) * radioInicial; // Distribuidas desde centro
-        particulas[i].velocidadAngular = 2.0f + (rand() % 100) / 100.0f; // Velocidad variable
+        particulas[i].angulo = (i * 18.0f) * M_PI / 180.0f;
+        particulas[i].distancia = (i / 20.0f) * radioInicial;
+        particulas[i].velocidadAngular = 2.0f + (rand() % 100) / 100.0f;
     }
 }
 
@@ -75,33 +73,27 @@ void Vortice::inicializarParticulas() {
 void Vortice::actualizar(float dt) {
     if (!activo) return;
 
-    // Actualizar tiempo
     tiempoActual += dt;
 
-    // Actualizar fisica del vortice (decaimiento del radio)
     if (fisicaVortice) {
         fisicaVortice->actualizar(dt);
         radioActual = fisicaVortice->getRadioActual();
     }
 
-    // Actualizar rotacion visual
-    rotacionActual += 2.0f * M_PI / 3.0f * dt; // ω = 2π/3
+    rotacionActual += 2.0f * M_PI / 3.0f * dt;
     if (rotacionActual > 2.0f * M_PI) {
         rotacionActual -= 2.0f * M_PI;
     }
 
-    // Actualizar particulas
     for (int i = 0; i < 20; i++) {
         particulas[i].angulo += particulas[i].velocidadAngular * dt;
         if (particulas[i].angulo > 2.0f * M_PI) {
             particulas[i].angulo -= 2.0f * M_PI;
         }
 
-        // Las particulas se acercan al centro con el tiempo
         particulas[i].distancia = (i / 20.0f) * radioActual;
     }
 
-    // Desactivar si el tiempo de vida se acabo
     if (tiempoActual >= tiempoVida || radioActual < 10.0f) {
         destruir();
     }
@@ -112,15 +104,14 @@ void Vortice::renderizar(QPainter& painter) {
 
     painter.save();
 
-    // Centro del vortice
     float centroX = posicion.x;
     float centroY = posicion.y;
 
-    // Dibujar circulos concentricos (efecto de profundidad)
+    // Dibujar circulos concentricos
     int numCirculos = 5;
     for (int i = 0; i < numCirculos; i++) {
         float radioCirculo = radioActual * (1.0f - i / (float)numCirculos);
-        int alpha = 255 - (i * 40); // Mas transparente hacia el centro
+        int alpha = 255 - (i * 40);
 
         painter.setPen(Qt::NoPen);
         painter.setBrush(QColor(0, 50, 100, alpha));
@@ -136,18 +127,15 @@ void Vortice::renderizar(QPainter& painter) {
     painter.setPen(QPen(QColor(100, 200, 255, 200), 2));
 
     for (int i = 0; i < 20; i++) {
-        // Calcular posicion de la particula
         float angulo = particulas[i].angulo + rotacionActual;
         float dist = particulas[i].distancia;
 
         float x = centroX + dist * std::cos(angulo);
         float y = centroY + dist * std::sin(angulo);
 
-        // Dibujar particula
         painter.setBrush(QColor(150, 220, 255, 180));
         painter.drawEllipse(x - 3, y - 3, 6, 6);
 
-        // Conectar con la siguiente particula (espiral continua)
         if (i < 19) {
             float siguienteAngulo = particulas[i + 1].angulo + rotacionActual;
             float siguienteDist = particulas[i + 1].distancia;
@@ -159,14 +147,14 @@ void Vortice::renderizar(QPainter& painter) {
         }
     }
 
-    // Dibujar centro oscuro (ojo del vortice)
+    // Centro oscuro
     painter.setBrush(QColor(0, 10, 30, 200));
     painter.drawEllipse(
         centroX - 10, centroY - 10,
         20, 20
         );
 
-    // Indicador de tiempo restante (barra circular)
+    // Indicador de tiempo restante
     float porcentajeVida = 1.0f - (tiempoActual / tiempoVida);
     painter.setPen(QPen(QColor(255, 100, 100), 3));
     painter.setBrush(Qt::NoBrush);
@@ -175,33 +163,46 @@ void Vortice::renderizar(QPainter& painter) {
         centroY - radioActual - 10,
         (radioActual + 10) * 2,
         (radioActual + 10) * 2,
-        90 * 16,  // Empezar arriba
-        -360 * 16 * porcentajeVida  // Decrecer
+        90 * 16,
+        -360 * 16 * porcentajeVida
         );
 
     painter.restore();
 }
 
 void Vortice::onColision(Entidad* otra) {
-    // El vortice no colisiona directamente
-    // Su efecto se aplica a traves de aplicarFuerzaA()
     (void)otra;
 }
 
 // ========== METODOS ESPECIFICOS ==========
 
 void Vortice::aplicarFuerzaA(Entidad* e) {
-    if (!e || !activo || !fisicaVortice) return;
+    if (!e || !activo) return;
 
-    // Calcular distancia a la entidad
     Vector2D posicionEntidad = e->getPosicion();
     float distancia = posicion.distanciaA(posicionEntidad);
 
-    // Si esta fuera del radio, no aplicar fuerza
-    if (distancia >= radioActual) return;
+    // Solo aplicar si esta dentro del rango de atraccion
+    if (distancia >= rangoAtraccion) return;
 
-    // Aplicar la fisica del vortice a la entidad
-    fisicaVortice->aplicar(e);
+    // ===== CALCULAR VECTOR HACIA EL CENTRO (ATRACCION) =====
+    Vector2D direccion = posicion - posicionEntidad;
+
+    if (distancia < 1.0f) return;  // Evitar division por cero
+
+    direccion.normalizar();
+
+    // ===== FUERZA INVERSAMENTE PROPORCIONAL A LA DISTANCIA =====
+    float factorDistancia = 1.0f - (distancia / rangoAtraccion);
+    factorDistancia = factorDistancia * factorDistancia;  // Cuadratica para mas intensidad
+
+    float fuerzaMagnitud = 500.0f * factorDistancia;  // FUERZA POTENTE
+
+    Vector2D fuerza = direccion * fuerzaMagnitud;
+
+    // Aplicar la fuerza a la velocidad de la entidad
+    Vector2D velocidadActual = e->getVelocidad();
+    e->setVelocidad(velocidadActual + fuerza * 0.016f);  // dt aproximado
 }
 
 float Vortice::getRadioActual() const {
@@ -227,11 +228,10 @@ float Vortice::getFuerzaEn(const Vector2D& punto) const {
 
     float distancia = posicion.distanciaA(punto);
 
-    if (distancia >= radioActual) return 0.0f;
+    if (distancia >= rangoAtraccion) return 0.0f;
 
-    // Calcular fuerza usando la formula del vortice
-    float distanciaNormalizada = distancia / radioActual;
+    float distanciaNormalizada = distancia / rangoAtraccion;
     float factor = 1.0f - distanciaNormalizada;
 
-    return 300.0f * factor * factor; // F_max = 300
+    return 500.0f * factor * factor;
 }

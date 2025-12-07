@@ -3,27 +3,86 @@
 
 #include "entidad.h"
 #include <QPainter>
+#include <QPixmap>
 
-// Clase Jugador - El personaje controlado por el usuario
-// Hereda de Entidad y añade mecanicas especificas
+// Clase de animacion para sprite sheets
+class AnimacionSprite {
+private:
+    QPixmap spriteSheet;
+    int frameAncho;
+    int frameAlto;
+    int numFrames;
+    int frameActual;
+    float duracionCicloCompleto;
+    float tiempoAcumulado;
+
+public:
+    AnimacionSprite() : frameAncho(64), frameAlto(64), numFrames(1), frameActual(0),
+        duracionCicloCompleto(1.0f), tiempoAcumulado(0.0f) {}
+
+    // ciclosSegundo = cuantas veces se repite la animacion completa por segundo
+    AnimacionSprite(const QPixmap& sheet, int ancho, int alto, int frames, float ciclosSegundo)
+        : spriteSheet(sheet), frameAncho(ancho), frameAlto(alto), numFrames(frames),
+        frameActual(0), duracionCicloCompleto(1.0f / ciclosSegundo), tiempoAcumulado(0.0f) {}
+
+    void actualizar(float dt) {
+        tiempoAcumulado += dt;
+
+        // Calcular que frame mostrar segun el tiempo transcurrido
+        float tiempoPorFrame = duracionCicloCompleto / numFrames;
+        frameActual = (int)(tiempoAcumulado / tiempoPorFrame) % numFrames;
+    }
+
+    QPixmap getFrameActual() const {
+        if (spriteSheet.isNull()) return QPixmap();
+        int x = frameActual * frameAncho;
+        return spriteSheet.copy(x, 0, frameAncho, frameAlto);
+    }
+
+    void reiniciar() {
+        frameActual = 0;
+        tiempoAcumulado = 0.0f;
+    }
+};
+
+// Clase Jugador
 class Jugador : public Entidad {
 private:
-    float salud;              // Vida actual (0-100)
-    float saludMaxima;        // Vida maxima (100)
-    int vidas;                // Vidas restantes (3)
-    int puntuacion;           // Puntos acumulados
-    float velocidadBase;      // Velocidad de movimiento (150 px/s)
+    float salud;
+    float saludMaxima;
+    int vidas;
+    int puntuacion;
+    float velocidadBase;
     float oxigeno;
+    float oxigenoMaximo;
+
+    // Animaciones
+    AnimacionSprite animIdle;
+    AnimacionSprite animSwim;
+    AnimacionSprite animHurt;
+    AnimacionSprite animDeath;
+
+    enum class EstadoAnimacion {
+        IDLE,
+        SWIM,
+        HURT,
+        DEATH
+    };
+
+    EstadoAnimacion estadoActual;
+    float tiempoMuerte;  // Contador para animacion de muerte
 
     // Habilidad especial
-    bool habilidadActiva;     // Si esta usando habilidad
-    float tiempoHabilidad;    // Tiempo restante de habilidad
-    float cooldownHabilidad;  // Tiempo hasta poder usar otra vez (5s)
-    float tiempoCooldown;     // Contador de cooldown
+    bool habilidadActiva;
+    float tiempoHabilidad;
+    float cooldownHabilidad;
+    float tiempoCooldown;
 
-    // Invencibilidad temporal (al recibir daño)
+    // Invencibilidad temporal
     bool invencible;
     float tiempoInvencibilidad;
+
+    void cargarAnimaciones();
 
 public:
     // ========== CONSTRUCTORES ==========
@@ -45,6 +104,8 @@ public:
     void recibirDanio(float cantidad);
     void curar(float cantidad);
     bool estaMuerto() const;
+    bool estaEnAnimacionMuerte() const { return estadoActual == EstadoAnimacion::DEATH; }
+    float getTiempoMuerte() const { return tiempoMuerte; }
 
     // ========== HABILIDAD ESPECIAL ==========
     void usarHabilidad();
@@ -62,6 +123,7 @@ public:
     int getPuntuacion() const;
     float getVelocidadBase() const;
     float getOxigeno() const { return oxigeno; }
+    float getOxigenoMaximo() const { return oxigenoMaximo; }
     bool estaInvencible() const;
 
     // ========== SETTERS ==========
