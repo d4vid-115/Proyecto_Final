@@ -1,4 +1,5 @@
 #include "jugador.h"
+#include "gestorsprites.h"
 #include <QColor>
 
 // ========== CONSTRUCTORES ==========
@@ -8,11 +9,11 @@ Jugador::Jugador()
     salud(100.0f), saludMaxima(100.0f),
     vidas(3), puntuacion(0),
     velocidadBase(150.0f),
+    oxigeno(100.0f),
     habilidadActiva(false), tiempoHabilidad(0.0f),
     cooldownHabilidad(5.0f), tiempoCooldown(0.0f),
     invencible(false), tiempoInvencibilidad(0.0f) {
 
-    // Configurar dimensiones del jugador
     setDimensiones(32, 48);
 }
 
@@ -21,6 +22,7 @@ Jugador::Jugador(const Vector2D& pos)
     salud(100.0f), saludMaxima(100.0f),
     vidas(3), puntuacion(0),
     velocidadBase(150.0f),
+    oxigeno(100.0f),
     habilidadActiva(false), tiempoHabilidad(0.0f),
     cooldownHabilidad(5.0f), tiempoCooldown(0.0f),
     invencible(false), tiempoInvencibilidad(0.0f) {
@@ -39,6 +41,12 @@ void Jugador::actualizar(float dt) {
 
     // Actualizar fisica si existe
     aplicarFisica(dt);
+
+    // Decrementar oxigeno (solo en nivel 3 submarino)
+    if (oxigeno > 0.0f) {
+        oxigeno -= dt * 2.0f; // Pierde 2 puntos por segundo
+        if (oxigeno < 0.0f) oxigeno = 0.0f;
+    }
 
     // Actualizar timers de habilidad
     if (tiempoCooldown > 0.0f) {
@@ -71,27 +79,118 @@ void Jugador::renderizar(QPainter& painter) {
     // Parpadear si esta invencible
     if (invencible) {
         int parpadeo = (int)(tiempoInvencibilidad * 10) % 2;
-        if (parpadeo == 0) return; // No dibujar cada otro frame
+        if (parpadeo == 0) return;
     }
 
-    // Dibujar jugador (por ahora un rectangulo)
+    painter.save();
+
+    // Dibujar jugador (barco pequeño con color segun estado)
     if (habilidadActiva) {
         painter.setBrush(QColor(255, 215, 0)); // Dorado si habilidad activa
     } else {
-        painter.setBrush(QColor(0, 120, 255)); // Azul normal
+        painter.setBrush(QColor(139, 69, 19)); // Marron (barco de madera)
     }
 
     painter.setPen(Qt::black);
-    painter.drawRect(posicion.x, posicion.y, ancho, alto);
+
+    // Casco del barco
+    QPolygon casco;
+    casco << QPoint(posicion.x, posicion.y + alto)
+          << QPoint(posicion.x + ancho/2, posicion.y)
+          << QPoint(posicion.x + ancho, posicion.y + alto);
+    painter.drawPolygon(casco);
+
+    // Vela/Mastil
+    painter.setBrush(Qt::white);
+    painter.drawRect(posicion.x + ancho/2 - 2, posicion.y + 5, 4, alto - 10);
+
+    QPolygon vela;
+    vela << QPoint(posicion.x + ancho/2, posicion.y + 8)
+         << QPoint(posicion.x + ancho/2 + 12, posicion.y + 15)
+         << QPoint(posicion.x + ancho/2, posicion.y + 22);
+    painter.drawPolygon(vela);
+
+    painter.restore();
 
     // Barra de vida encima del jugador
     float porcentajeSalud = salud / saludMaxima;
 
-    // Fondo de la barra (rojo)
     painter.setBrush(QColor(255, 0, 0));
     painter.drawRect(posicion.x, posicion.y - 10, ancho, 5);
 
-    // Barra de vida (verde)
+    painter.setBrush(QColor(0, 255, 0));
+    painter.drawRect(posicion.x, posicion.y - 10, ancho * porcentajeSalud, 5);
+}
+
+void Jugador::renderizarNadador(QPainter& painter) {
+    if (!activo) return;
+
+    // Parpadear si esta invencible
+    if (invencible) {
+        int parpadeo = (int)(tiempoInvencibilidad * 10) % 2;
+        if (parpadeo == 0) return;
+    }
+
+    painter.save();
+
+    GestorSprites* gestor = GestorSprites::obtenerInstancia();
+    QPixmap spriteJugador;
+
+    // Seleccionar sprite segun estado
+    if (salud <= 0) {
+        spriteJugador = gestor->getSprite("jugador_death");
+    } else if (invencible) {
+        spriteJugador = gestor->getSprite("jugador_hurt");
+    } else if (velocidad.magnitud() > 1.0f) {
+        spriteJugador = gestor->getSprite("jugador_swim");
+    } else {
+        spriteJugador = gestor->getSprite("jugador_idle");
+    }
+
+    // Determinar direccion (voltear sprite si va a la izquierda)
+    bool mirandoDerecha = velocidad.x >= 0;
+
+    if (!spriteJugador.isNull()) {
+        QPixmap jugadorEscalado = spriteJugador.scaled(ancho * 1.5f, alto * 1.5f,
+                                                       Qt::KeepAspectRatio, Qt::SmoothTransformation);
+
+        // Voltear horizontalmente si va a la izquierda
+        if (!mirandoDerecha) {
+            jugadorEscalado = jugadorEscalado.transformed(
+                QTransform().scale(-1, 1));
+        }
+
+        painter.drawPixmap(posicion.x - ancho * 0.25f,
+                           posicion.y - alto * 0.25f,
+                           jugadorEscalado);
+    } else {
+        // Fallback: dibujo manual simple
+        if (habilidadActiva) {
+            painter.setBrush(QColor(255, 215, 0));
+        } else {
+            painter.setBrush(QColor(255, 200, 150));
+        }
+
+        painter.setPen(Qt::black);
+
+        // Cuerpo
+        painter.drawEllipse(posicion.x, posicion.y, ancho, alto);
+
+        // Brazos/piernas (lineas simples)
+        painter.drawLine(posicion.x + ancho/2, posicion.y + alto/2,
+                         posicion.x + ancho/2 - 8, posicion.y + alto/2 + 10);
+        painter.drawLine(posicion.x + ancho/2, posicion.y + alto/2,
+                         posicion.x + ancho/2 + 8, posicion.y + alto/2 + 10);
+    }
+
+    painter.restore();
+
+    // Barra de vida
+    float porcentajeSalud = salud / saludMaxima;
+
+    painter.setBrush(QColor(255, 0, 0));
+    painter.drawRect(posicion.x, posicion.y - 10, ancho, 5);
+
     painter.setBrush(QColor(0, 255, 0));
     painter.drawRect(posicion.x, posicion.y - 10, ancho * porcentajeSalud, 5);
 }

@@ -8,6 +8,7 @@
 // Vortice - Remolino submarino peligroso (Nivel 3)
 // Atrae entidades cercanas con fuerza de succión
 // Decae exponencialmente hasta desaparecer
+
 class Vortice : public Entidad {
 private:
     FisicaVortice* fisicaVortice;    // Fisica del vortice
@@ -16,6 +17,7 @@ private:
     float tiempoVida;                 // Tiempo total de existencia (8s)
     float tiempoActual;               // Tiempo transcurrido
     float rotacionActual;             // Angulo de rotacion para animacion
+    float rangoAtraccion;             // ← AGREGAR
 
     // Particulas visuales para el efecto espiral
     struct Particula {
@@ -48,6 +50,9 @@ public:
     // ========== GETTERS ==========
     Vector2D getCentro() const;
     float getFuerzaEn(const Vector2D& punto) const;
+    float getRadio() const { return radioActual; }
+    float getRangoAtraccion() const { return rangoAtraccion; }
+    float getRotacion() const { return rotacionActual; }
 };
 
 #endif // VORTICE_H

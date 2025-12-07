@@ -1,13 +1,23 @@
 #include "mainwindow.h"
 #include "gestorsprites.h"
+#include "gestorsonidos.h"
 #include <QApplication>
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
 
-    // ========== CARGAR TODOS LOS SPRITES ==========
-    GestorSprites* gestor = GestorSprites::obtenerInstancia();
-    gestor->cargarTodosLosSprites();
+    qDebug() << "\n╔══════════════════════════════════════════════╗";
+    qDebug() << "║   EL NAUFRAGIO DEL RMS LUSITANIA            ║";
+    qDebug() << "║   Universidad de Antioquia - 2025           ║";
+    qDebug() << "╚══════════════════════════════════════════════╝\n";
+
+    // ========== CARGAR SPRITES ==========
+    GestorSprites* gestorSprites = GestorSprites::obtenerInstancia();
+    gestorSprites->cargarTodosLosSprites();
+
+    // ========== CARGAR SONIDOS ==========
+    GestorSonidos* gestorSonidos = GestorSonidos::obtenerInstancia();
+    gestorSonidos->cargarTodosLosSonidos();
 
     // Crear ventana principal
     MainWindow ventana;
@@ -15,8 +25,9 @@ int main(int argc, char *argv[]) {
 
     int resultado = app.exec();
 
-    // Limpiar gestor al salir
+    // Limpiar al salir
     GestorSprites::destruirInstancia();
+    GestorSonidos::destruirInstancia();
 
     return resultado;
 }

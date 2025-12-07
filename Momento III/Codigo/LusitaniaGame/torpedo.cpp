@@ -1,4 +1,5 @@
 #include "torpedo.h"
+#include "gestorsprites.h"
 #include <cmath>
 #include <QColor>
 
@@ -66,6 +67,9 @@ void Torpedo::actualizar(float dt) {
 void Torpedo::renderizar(QPainter& painter) {
     if (!activo) return;
 
+    GestorSprites* gestor = GestorSprites::obtenerInstancia();
+    QPixmap spriteTorpedo = gestor->getSprite("torpedo");
+
     // Calcular angulo de rotacion basado en velocidad
     float anguloRender = std::atan2(velocidad.y, velocidad.x);
 
@@ -73,27 +77,33 @@ void Torpedo::renderizar(QPainter& painter) {
 
     // Trasladar al centro del torpedo
     painter.translate(posicion.x + ancho/2, posicion.y + alto/2);
-
-    // Rotar segun direccion
     painter.rotate(anguloRender * 180.0f / M_PI);
 
-    // Dibujar torpedo (rojo)
-    painter.setBrush(QColor(255, 50, 50));
-    painter.setPen(Qt::black);
-    painter.drawEllipse(-ancho/2, -alto/2, ancho, alto);
+    if (!spriteTorpedo.isNull()) {
+        // Usar sprite
+        QPixmap torpedoEscalado = spriteTorpedo.scaled(ancho * 2, alto * 2,
+                                                       Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-    // Dibujar punta del torpedo
-    QPolygon punta;
-    punta << QPoint(ancho/2, 0)
-          << QPoint(ancho/2 + 8, -4)
-          << QPoint(ancho/2 + 8, 4);
-    painter.setBrush(QColor(150, 30, 30));
-    painter.drawPolygon(punta);
+        painter.drawPixmap(-ancho, -alto, torpedoEscalado);
+    } else {
+        // Fallback: dibujo manual
+        painter.setBrush(QColor(255, 50, 50));
+        painter.setPen(Qt::black);
+        painter.drawEllipse(-ancho/2, -alto/2, ancho, alto);
+
+        // Punta del torpedo
+        QPolygon punta;
+        punta << QPoint(ancho/2, 0)
+              << QPoint(ancho/2 + 8, -4)
+              << QPoint(ancho/2 + 8, 4);
+        painter.setBrush(QColor(150, 30, 30));
+        painter.drawPolygon(punta);
+    }
 
     painter.restore();
 
-    // Dibujar estela (trail)
-    painter.setPen(QPen(QColor(255, 100, 100, 100), 2));
+    // Estela (trail)
+    painter.setPen(QPen(QColor(255, 255, 255, 150), 2));
     painter.drawLine(
         posicion.x, posicion.y,
         posicion.x - velocidad.x * 0.05f,

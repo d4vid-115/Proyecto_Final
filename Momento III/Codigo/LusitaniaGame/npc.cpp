@@ -1,4 +1,5 @@
 #include "npc.h"
+#include "gestorsprites.h"
 #include <cmath>
 #include <cstdlib>
 #include <QColor>
@@ -173,76 +174,81 @@ void NPC::renderizar(QPainter& painter) {
 
     painter.save();
 
-    // Color segun tipo
-    QColor colorBase;
-    switch (tipoNPC) {
-    case TipoNPC::HOMBRE:
-        colorBase = QColor(50, 50, 150);  // Azul oscuro
-        break;
-    case TipoNPC::MUJER:
-        colorBase = QColor(150, 50, 50);  // Rojo oscuro
-        break;
-    case TipoNPC::NINO:
-        colorBase = QColor(50, 150, 50);  // Verde
-        break;
-    }
+    // Obtener sprite segun tipo
+    GestorSprites* gestor = GestorSprites::obtenerInstancia();
+    QString nombreSprite;
+
+    // Seleccionar sprite segun tipo (rotando entre las 8 variaciones)
+    int variacion = ((int)tipoNPC % 8) + 1;
+    nombreSprite = QString("npc_%1").arg(variacion, 2, 10, QChar('0'));
+
+    QPixmap spriteNPC = gestor->getSprite(nombreSprite);
 
     // Si esta inconsciente, dibujar acostado
     if (!consciente || estadoNPC == EstadoNPC::CAIDO) {
-        painter.setBrush(colorBase);
+        painter.setBrush(QColor(100, 100, 100));
         painter.setPen(Qt::black);
         painter.drawEllipse(posicion.x, posicion.y + alto/2, ancho * 1.5f, alto/2);
 
         // Zzz para indicar inconsciente
         painter.setPen(QPen(Qt::white, 2));
-        painter.drawText(posicion.x + ancho + 5, posicion.y, "Zzz");
+        painter.setFont(QFont("Arial", 10));
+        painter.drawText(posicion.x + ancho + 5, posicion.y + 10, "Zzz");
 
         painter.restore();
         return;
     }
 
     // Dibujar NPC de pie
-    painter.setBrush(colorBase);
-    painter.setPen(Qt::black);
+    if (!spriteNPC.isNull()) {
+        // Usar sprite
+        QPixmap npcEscalado = spriteNPC.scaled(ancho, alto,
+                                               Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-    // Cuerpo
-    painter.drawRect(posicion.x + 4, posicion.y + 12, ancho - 8, alto - 12);
+        painter.drawPixmap(posicion.x, posicion.y, npcEscalado);
+    } else {
+        // Fallback: dibujo manual original
+        QColor colorBase;
+        switch (tipoNPC) {
+        case TipoNPC::HOMBRE:
+            colorBase = QColor(50, 50, 150);
+            break;
+        case TipoNPC::MUJER:
+            colorBase = QColor(150, 50, 50);
+            break;
+        case TipoNPC::NINO:
+            colorBase = QColor(50, 150, 50);
+            break;
+        }
 
-    // Cabeza
-    painter.drawEllipse(posicion.x + 4, posicion.y, ancho - 8, 12);
+        painter.setBrush(colorBase);
+        painter.setPen(Qt::black);
 
-    // Brazos (animados segun frame)
-    int offsetBrazo = (frameActual % 2 == 0) ? 2 : -2;
-    painter.drawLine(posicion.x + 2, posicion.y + 15,
-                     posicion.x - 2, posicion.y + 25 + offsetBrazo);
-    painter.drawLine(posicion.x + ancho - 2, posicion.y + 15,
-                     posicion.x + ancho + 2, posicion.y + 25 - offsetBrazo);
-
-    // Piernas (animadas)
-    painter.drawLine(posicion.x + 8, posicion.y + alto,
-                     posicion.x + 6, posicion.y + alto + 5 + offsetBrazo);
-    painter.drawLine(posicion.x + ancho - 8, posicion.y + alto,
-                     posicion.x + ancho - 6, posicion.y + alto + 5 - offsetBrazo);
+        // Cuerpo
+        painter.drawRect(posicion.x + 4, posicion.y + 12, ancho - 8, alto - 12);
+        // Cabeza
+        painter.drawEllipse(posicion.x + 4, posicion.y, ancho - 8, 12);
+    }
 
     // Indicador de estado
     QColor colorEstado;
     switch (estadoNPC) {
     case EstadoNPC::PANICO:
-        colorEstado = QColor(255, 255, 0);   // Amarillo
+        colorEstado = QColor(255, 255, 0);
         break;
     case EstadoNPC::SIGUIENDO:
-        colorEstado = QColor(0, 255, 0);     // Verde
+        colorEstado = QColor(0, 255, 0);
         break;
     case EstadoNPC::RESCATADO:
-        colorEstado = QColor(0, 255, 255);   // Cyan
+        colorEstado = QColor(0, 255, 255);
         break;
     case EstadoNPC::CAIDO:
-        colorEstado = QColor(255, 0, 0);     // Rojo
+        colorEstado = QColor(255, 0, 0);
         break;
     }
 
-    // Circulo de estado sobre la cabeza
     painter.setBrush(colorEstado);
+    painter.setPen(Qt::black);
     painter.drawEllipse(posicion.x + ancho/2 - 3, posicion.y - 8, 6, 6);
 
     // Barra de resistencia

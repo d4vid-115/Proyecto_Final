@@ -8,6 +8,7 @@
 
 // Escombro - Objetos flotantes/hundibles en el Nivel 3
 // Usa fisica de Arquimedes para flotar o hundirse segun densidad
+
 class Escombro : public Entidad {
 private:
     TipoEscombro tipoEscombro;       // MADERA, METAL, SALVAVIDAS, NEUTRO
@@ -37,7 +38,7 @@ public:
     bool estaHundiendo() const;
 
     // ========== GETTERS ==========
-    TipoEscombro getTipoEscombro() const;
+    TipoEscombro getTipo() const { return tipoEscombro; }
     float getDensidad() const;
     bool estaEnAgua() const;
 

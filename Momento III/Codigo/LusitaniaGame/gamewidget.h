@@ -52,6 +52,11 @@ public:
     int getFPS() const;
     float getDeltaTime() const;
 
+signals:
+    // ========== SEÑALES ==========
+    void victoria(int puntos, int nivel);
+    void derrota(int puntos, int nivel);
+
 protected:
     // ========== EVENTOS Qt ==========
     void paintEvent(QPaintEvent* event) override;

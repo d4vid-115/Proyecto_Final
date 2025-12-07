@@ -1,28 +1,87 @@
 #include "mainwindow.h"
+#include "gestorsonidos.h"
+#include <QVBoxLayout>
 #include <QMessageBox>
 #include <QApplication>
 
 // ========== CONSTRUCTOR ==========
 
-MainWindow::MainWindow(QWidget* parent)
-    : QMainWindow(parent),
-    gameWidget(nullptr) {
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent), gameWidget(nullptr), pantallaInicio(nullptr),
+    pantallaVictoria(nullptr), pantallaDerrota(nullptr), enJuego(false) {
 
-    // Configurar ventana
+    setFixedSize(800, 600);
     setWindowTitle("El Naufragio del RMS Lusitania");
-    setMinimumSize(800, 650); // Extra 50px para menu
 
-    // Crear widget del juego
+    // Widget central
+    QWidget* centralWidget = new QWidget(this);
+    setCentralWidget(centralWidget);
+
+    QVBoxLayout* layout = new QVBoxLayout(centralWidget);
+    layout->setContentsMargins(0, 0, 0, 0);
+
+    // Crear pantallas
+    pantallaInicio = new PantallaInicio(this);
+    pantallaVictoria = new PantallaVictoria(this);
+    pantallaDerrota = new PantallaDerrota(this);
     gameWidget = new GameWidget(this);
-    setCentralWidget(gameWidget);
 
-    // Crear interfaz
+    // Agregar al layout (solo pantalla inicio visible)
+    layout->addWidget(pantallaInicio);
+    layout->addWidget(gameWidget);
+    layout->addWidget(pantallaVictoria);
+    layout->addWidget(pantallaDerrota);
+
+    gameWidget->hide();
+    pantallaVictoria->hide();
+    pantallaDerrota->hide();
+
+    // Conectar señales del menu principal
+    connect(pantallaInicio, &PantallaInicio::iniciarJuego,
+            this, &MainWindow::onIniciarJuegoDesdeMenu);
+    connect(pantallaInicio, &PantallaInicio::salir,
+            this, &MainWindow::close);
+
+    // Conectar señales del juego
+    connect(gameWidget, &GameWidget::victoria,
+            this, &MainWindow::onVictoria);
+    connect(gameWidget, &GameWidget::derrota,
+            this, &MainWindow::onDerrota);
+
+    // Conectar señales de pantalla de victoria
+    connect(pantallaVictoria, &PantallaVictoria::volverAlMenu,
+            this, &MainWindow::volverAlMenu);
+
+    // Usar lambda porque la señal no tiene parametros
+    connect(pantallaVictoria, &PantallaVictoria::jugarDeNuevo,
+            this, [this]() {
+                pantallaVictoria->hide();
+                onIniciarJuegoDesdeMenu(1);  // Reiniciar desde nivel 1
+            });
+
+    // Conectar señales de pantalla de derrota
+    connect(pantallaDerrota, &PantallaDerrota::volverAlMenu,
+            this, &MainWindow::volverAlMenu);
+
+    // Usar lambda porque la señal no tiene parametros
+    connect(pantallaDerrota, &PantallaDerrota::reintentar,
+            this, [this]() {
+                pantallaDerrota->hide();
+                if (gameWidget) {
+                    gameWidget->show();
+                    gameWidget->setFocus();
+                    gameWidget->reiniciarJuego();
+                    enJuego = true;
+                }
+            });
+
+    // Crear menus
     crearAcciones();
     crearMenus();
     conectarAcciones();
 
-    // Centrar ventana
-    resize(800, 650);
+    // Musica del menu
+    GestorSonidos::obtenerInstancia()->reproducirMusica("menu");
 }
 
 MainWindow::~MainWindow() {
@@ -83,6 +142,53 @@ void MainWindow::crearMenus() {
     menuAyuda->addAction(accionAcercaDe);
 }
 
+void MainWindow::onIniciarJuegoDesdeMenu(int nivel) {
+    // Ocultar menu
+    pantallaInicio->hide();
+
+    // Mostrar juego
+    gameWidget->show();
+    gameWidget->setFocus();
+    gameWidget->iniciarJuego(nivel);
+
+    enJuego = true;
+
+    // Cambiar musica segun nivel
+    GestorSonidos* sonidos = GestorSonidos::obtenerInstancia();
+    sonidos->reproducirMusica(QString("nivel%1").arg(nivel));
+}
+
+void MainWindow::onVictoria(int puntos, int nivel) {
+    enJuego = false;
+    gameWidget->hide();
+
+    pantallaVictoria->mostrarResultados(puntos, nivel);
+    pantallaVictoria->show();
+
+    GestorSonidos::obtenerInstancia()->reproducirMusica("victoria");
+}
+
+void MainWindow::onDerrota(int puntos, int nivel) {
+    enJuego = false;
+    gameWidget->hide();
+
+    pantallaDerrota->mostrarResultados(puntos, nivel);
+    pantallaDerrota->show();
+
+    GestorSonidos::obtenerInstancia()->reproducirMusica("derrota");
+}
+
+void MainWindow::volverAlMenu() {
+    enJuego = false;
+    gameWidget->hide();
+    pantallaVictoria->hide();
+    pantallaDerrota->hide();
+
+    pantallaInicio->show();
+
+    GestorSonidos::obtenerInstancia()->reproducirMusica("menu");
+}
+
 void MainWindow::conectarAcciones() {
     // Conectar acciones a slots
     connect(accionNuevoJuego, &QAction::triggered, this, &MainWindow::onNuevoJuego);
@@ -125,6 +231,7 @@ void MainWindow::onReiniciar() {
 }
 
 void MainWindow::onSalir() {
+    GestorSonidos::obtenerInstancia()->detenerMusica();
     QApplication::quit();
 }
 

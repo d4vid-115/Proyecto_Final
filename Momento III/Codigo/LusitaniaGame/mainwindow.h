@@ -3,23 +3,31 @@
 
 #include <QMainWindow>
 #include <QMenuBar>
+#include <QMenu>
 #include <QAction>
 #include "gamewidget.h"
+#include "pantallainicio.h"
+#include "pantallavictoria.h"
+#include "pantalladerrota.h"
 
-// MainWindow - Ventana principal de la aplicacion
-// Contiene el GameWidget y menus
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 private:
-    // Widget del juego
+    // ===== WIDGETS =====
     GameWidget* gameWidget;
+    PantallaInicio* pantallaInicio;
+    PantallaVictoria* pantallaVictoria;
+    PantallaDerrota* pantallaDerrota;
 
-    // Menus y acciones
+    bool enJuego;
+
+    // ===== MENUS =====
     QMenu* menuJuego;
     QMenu* menuNiveles;
     QMenu* menuAyuda;
 
+    // ===== ACCIONES =====
     QAction* accionNuevoJuego;
     QAction* accionPausar;
     QAction* accionReiniciar;
@@ -32,10 +40,14 @@ private:
     QAction* accionInstrucciones;
     QAction* accionAcercaDe;
 
-    // Metodos privados
-    void crearMenus();
+    // Metodos de creacion de interfaz
     void crearAcciones();
+    void crearMenus();
     void conectarAcciones();
+
+public:
+    MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
 
 private slots:
     // Slots de menu
@@ -51,10 +63,11 @@ private slots:
     void onInstrucciones();
     void onAcercaDe();
 
-public:
-    // ========== CONSTRUCTOR ==========
-    explicit MainWindow(QWidget* parent = nullptr);
-    ~MainWindow();
+    // Slots de pantallas
+    void onIniciarJuegoDesdeMenu(int nivel);
+    void onVictoria(int puntos, int nivel);
+    void onDerrota(int puntos, int nivel);
+    void volverAlMenu();
 };
 
 #endif // MAINWINDOW_H

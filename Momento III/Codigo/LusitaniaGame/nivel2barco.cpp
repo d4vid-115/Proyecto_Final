@@ -1,4 +1,5 @@
 #include "nivel2barco.h"
+#include "gestorsprites.h"
 #include <QColor>
 #include <QPolygonF>
 #include <cstdlib>
@@ -24,20 +25,18 @@ Nivel2Barco::Nivel2Barco()
     objetivoNPCs(10) {
 
     // Configurar nivel
-    anchoNivel = 1600;
-    altoNivel = 900;
+    anchoNivel = 800;
+    altoNivel = 600;
     tiempoLimite = tiempoLimiteHundimiento;
 
     // Actualizar limites de camara
     camara->setLimites(Vector2D(0, 0), Vector2D(anchoNivel, altoNivel));
-    camara->setTieneScroll(false); // Vista fija
+    camara->setTieneScroll(false);
 
     // Definir cuartos del barco
     cuartos.push_back(Vector2D(200, 300));
     cuartos.push_back(Vector2D(400, 250));
     cuartos.push_back(Vector2D(600, 300));
-    cuartos.push_back(Vector2D(800, 200));
-    cuartos.push_back(Vector2D(1000, 250));
 
     // Inicializar
     inicializar();
@@ -74,8 +73,8 @@ void Nivel2Barco::crearNPCs() {
         Vector2D posicion = cuartos[rand() % cuartos.size()];
 
         // Offset aleatorio dentro del cuarto
-        posicion.x += (rand() % 100) - 50;
-        posicion.y += (rand() % 60) - 30;
+        posicion.x += (rand() % 80) - 40;
+        posicion.y += (rand() % 40) - 20;
 
         // Tipo aleatorio
         TipoNPC tipo;
@@ -97,24 +96,24 @@ void Nivel2Barco::crearObjetos() {
     // Crear objetos iniciales
 
     // Maletas
-    for (int i = 0; i < 5; i++) {
-        Vector2D pos(200 + i * 150, 250);
+    for (int i = 0; i < 4; i++) {
+        Vector2D pos(150 + i * 120, 250);
         ObjetoJuego* maleta = new ObjetoJuego(pos, TipoObjeto::MALETA);
         motorFisica->agregarEntidad(maleta);
         objetos.push_back(maleta);
     }
 
     // Sillas
-    for (int i = 0; i < 4; i++) {
-        Vector2D pos(300 + i * 200, 300);
+    for (int i = 0; i < 3; i++) {
+        Vector2D pos(200 + i * 150, 300);
         ObjetoJuego* silla = new ObjetoJuego(pos, TipoObjeto::SILLA);
         motorFisica->agregarEntidad(silla);
         objetos.push_back(silla);
     }
 
     // Lamparas colgantes (MCU)
-    for (int i = 0; i < 3; i++) {
-        Vector2D anclaje(400 + i * 300, 150);
+    for (int i = 0; i < 2; i++) {
+        Vector2D anclaje(300 + i * 200, 150);
         ObjetoJuego* lampara = new ObjetoJuego(Vector2D(0, 0), TipoObjeto::LAMPARA);
         lampara->colgar(anclaje);
         motorFisica->agregarEntidad(lampara);
@@ -131,7 +130,7 @@ void Nivel2Barco::spawnearObjetoAleatorio() {
     else if (tipoRand == 1) tipo = TipoObjeto::MALETA;
     else tipo = TipoObjeto::ESCOMBRO_GRANDE;
 
-    Vector2D pos(200 + (rand() % 1000), 50);
+    Vector2D pos(150 + (rand() % 500), 50);
 
     ObjetoJuego* objeto = new ObjetoJuego(pos, tipo);
     motorFisica->agregarEntidad(objeto);
@@ -149,6 +148,23 @@ void Nivel2Barco::actualizar(float dt) {
 
     // Actualizar inclinacion del barco
     actualizarInclinacion(dt);
+
+    // APLICAR LIMITES AL JUGADOR
+    if (jugador) {
+        Vector2D pos = jugador->getPosicion();
+        float ancho = jugador->getAncho();
+        float alto = jugador->getAlto();
+
+        // Limites horizontales
+        if (pos.x < 0) pos.x = 0;
+        if (pos.x + ancho > anchoNivel) pos.x = anchoNivel - ancho;
+
+        // Limites verticales
+        if (pos.y < 0) pos.y = 0;
+        if (pos.y + alto > altoNivel) pos.y = altoNivel - alto;
+
+        jugador->setPosicion(pos);
+    }
 
     // Actualizar fisica
     motorFisica->actualizar(dt);
@@ -180,7 +196,6 @@ void Nivel2Barco::actualizar(float dt) {
 }
 
 void Nivel2Barco::actualizarInclinacion(float dt) {
-
     // Aumentar inclinacion gradualmente
     anguloBarco += velocidadInclinacion * dt;
 
@@ -197,7 +212,7 @@ void Nivel2Barco::actualizarInclinacion(float dt) {
     }
 }
 
-void Nivel2Barco::actualizarNPCs(float dt) {
+void Nivel2Barco::actualizarNPCs(float /*dt*/) {
     // Actualizar lista de NPCs activos
     auto it = npcs.begin();
 
@@ -219,7 +234,7 @@ void Nivel2Barco::actualizarNPCs(float dt) {
     }
 }
 
-void Nivel2Barco::actualizarObjetos(float dt) {
+void Nivel2Barco::actualizarObjetos(float /*dt*/) {
     // Limpiar objetos inactivos
     auto it = objetos.begin();
 
@@ -257,16 +272,25 @@ void Nivel2Barco::renderizar(QPainter& painter) {
 
     painter.save();
 
-    // ===== FONDO: CIELO Y MAR =====
-    // Cielo
-    painter.fillRect(0, 0, 800, 400, QColor(100, 150, 200));
-    // Mar
-    painter.fillRect(0, 400, 800, 200, QColor(0, 50, 100));
+    GestorSprites* gestor = GestorSprites::obtenerInstancia();
+
+    // ===== FONDO =====
+    QPixmap fondoEstructura = gestor->getSprite("estructura1");
+
+    if (!fondoEstructura.isNull()) {
+        // Dibujar fondo escalado
+        QPixmap fondoEscalado = fondoEstructura.scaled(800, 600,
+                                                       Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        painter.drawPixmap(0, 0, fondoEscalado);
+    } else {
+        // Fallback: degradado
+        painter.fillRect(0, 0, 800, 400, QColor(100, 150, 200));
+        painter.fillRect(0, 400, 800, 200, QColor(0, 50, 100));
+    }
 
     // ===== BARCO INCLINADO =====
     painter.save();
 
-    // Punto de rotacion (centro del barco)
     QPointF centro(400, 400);
     painter.translate(centro);
     painter.rotate(anguloBarco);
@@ -292,10 +316,13 @@ void Nivel2Barco::renderizar(QPainter& painter) {
 
     painter.restore();
 
-    // ===== ZONA DE RESCATE (bote salvavidas) =====
+    // ===== ZONA DE RESCATE =====
     painter.setBrush(QColor(255, 200, 0));
     painter.setPen(Qt::black);
     painter.drawEllipse(zonaRescate.x - 30, zonaRescate.y - 15, 60, 30);
+
+    painter.setFont(QFont("Arial", 10, QFont::Bold));
+    painter.setPen(Qt::black);
     painter.drawText(zonaRescate.x - 25, zonaRescate.y + 40, "RESCATE");
 
     // ===== RENDERIZAR ENTIDADES =====
@@ -306,17 +333,6 @@ void Nivel2Barco::renderizar(QPainter& painter) {
     }
 
     painter.restore();
-
-    // ===== HUD =====
-    painter.setPen(Qt::white);
-    painter.drawText(10, 20, QString("Tiempo: %1 / %2 s")
-                                 .arg((int)tiempoTranscurrido)
-                                 .arg((int)tiempoLimiteHundimiento));
-    painter.drawText(10, 40, QString("Angulo: %1°").arg((int)anguloBarco));
-    painter.drawText(10, 60, QString("NPCs rescatados: %1 / %2")
-                                 .arg(npcsRescatados).arg(objetivoNPCs));
-    painter.drawText(10, 80, QString("Puntos: %1").arg(puntuacion));
-    painter.drawText(10, 100, QString("Vidas: %1").arg(jugador ? jugador->getVidas() : 0));
 }
 
 // ========== REINICIAR ==========
@@ -362,9 +378,6 @@ bool Nivel2Barco::verificarDerrota() {
     return sinVidas || tiempoAgotado;
 }
 
-void Nivel2Barco::manejarInput(int tecla, bool presionada) {
-    if (!jugador) return;
-
-    (void)tecla;
-    (void)presionada;
+void Nivel2Barco::manejarInput(int /*tecla*/, bool /*presionada*/) {
+    // Metodo reservado para input adicional
 }

@@ -1,4 +1,5 @@
 #include "nivel3submarino.h"
+#include "gestorsprites.h"
 #include <QColor>
 #include <cstdlib>
 
@@ -6,23 +7,23 @@
 
 Nivel3Submarino::Nivel3Submarino()
     : Nivel(),
-    profundidadInicial(800.0f),
+    profundidadInicial(3000.0f),
     profundidadObjetivo(0.0f),
-    profundidadActual(800.0f),
+    profundidadActual(3000.0f),
     tiempoSpawnVortice(0.0f),
-    intervaloSpawnVortice(15.0f),
+    intervaloSpawnVortice(12.0f),
     tiempoSpawnEscombro(0.0f),
-    intervaloSpawnEscombro(3.0f),
-    maxVortices(2),
+    intervaloSpawnEscombro(2.5f),
+    maxVortices(4),
     escombrosEvitados(0),
     vorticesEvitados(0) {
 
-    // Configurar nivel
-    anchoNivel = 1200;
-    altoNivel = 1000;
-    tiempoLimite = 0.0f;  // Sin limite de tiempo
+    // Configurar nivel LARGO
+    anchoNivel = 1600;
+    altoNivel = 3500;
+    tiempoLimite = 0.0f;
 
-    // Actualizar limites de camara
+    // Camara dinamica que sigue al jugador
     camara->setLimites(Vector2D(0, 0), Vector2D(anchoNivel, altoNivel));
     camara->setTieneScroll(true);
 
@@ -38,22 +39,24 @@ Nivel3Submarino::~Nivel3Submarino() {
 // ========== INICIALIZACION ==========
 
 void Nivel3Submarino::inicializar() {
-    // Crear jugador (pequeño)
-    jugador = new Jugador(Vector2D(400, profundidadInicial));
+    // Crear jugador en el FONDO
+    jugador = new Jugador(Vector2D(800, profundidadInicial));
     jugador->setDimensiones(48, 32);
+    jugador->setOxigeno(150.0f);
     motorFisica->agregarEntidad(jugador);
 
-    // Spawnear escombros iniciales
-    for (int i = 0; i < 10; i++) {
+    // Spawnear escombros distribuidos verticalmente
+    for (int i = 0; i < 40; i++) {
         spawnearEscombro();
     }
 
-    // Spawnear vortice inicial
+    // Spawnear vortices iniciales
+    spawnearVortice();
     spawnearVortice();
 
-    // Configurar gravedad (agua = menor gravedad)
+    // Configurar gravedad (agua = flotabilidad)
     motorFisica->setGravedadActiva(true);
-    motorFisica->setGravedad(2.0f); // Gravedad reducida bajo el agua
+    motorFisica->setGravedad(1.2f);
 }
 
 // ========== ACTUALIZACION ==========
@@ -64,6 +67,20 @@ void Nivel3Submarino::actualizar(float dt) {
     // Actualizar tiempo
     tiempoTranscurrido += dt;
 
+    // Deplecionar oxigeno del jugador
+    if (jugador) {
+        float oxigenoActual = jugador->getOxigeno();
+        oxigenoActual -= dt * 3.0f;
+
+        if (oxigenoActual < 0.0f) {
+            oxigenoActual = 0.0f;
+            // Daño por falta de oxigeno
+            jugador->recibirDanio(dt * 10.0f);
+        }
+
+        jugador->setOxigeno(oxigenoActual);
+    }
+
     // Actualizar fisica
     motorFisica->actualizar(dt);
 
@@ -73,7 +90,7 @@ void Nivel3Submarino::actualizar(float dt) {
     // Actualizar escombros
     actualizarEscombros(dt);
 
-    // Aplicar fuerzas de vortices
+    // Aplicar fuerzas de vortice
     aplicarFuerzasVortice();
 
     // Spawning de vortices
@@ -96,8 +113,9 @@ void Nivel3Submarino::actualizar(float dt) {
     if (jugador) {
         profundidadActual = jugador->getPosicion().y;
 
-        // Actualizar camara (seguir al jugador verticalmente)
-        camara->seguirObjetivo(jugador->getPosicion(), dt);
+        // CAMARA DINAMICA: Seguir al jugador con smooth scrolling
+        Vector2D posJugador = jugador->getPosicion();
+        camara->seguirObjetivo(posJugador, dt);
     }
 
     // Verificar condiciones
@@ -110,18 +128,16 @@ void Nivel3Submarino::actualizar(float dt) {
     }
 }
 
-void Nivel3Submarino::actualizarVortices(float dt) {
-    // Actualizar y limpiar vortices
+void Nivel3Submarino::actualizarVortices(float /*dt*/) {
     auto it = vortices.begin();
 
     while (it != vortices.end()) {
         Vortice* vortice = *it;
 
         if (!vortice || !vortice->estaActivo()) {
-            // Vortice expirado
             it = vortices.erase(it);
             vorticesEvitados++;
-            agregarPuntos(30); // 30 puntos por sobrevivir a un vortice
+            agregarPuntos(50);
         } else {
             ++it;
         }
@@ -129,7 +145,6 @@ void Nivel3Submarino::actualizarVortices(float dt) {
 }
 
 void Nivel3Submarino::actualizarEscombros(float dt) {
-    // Limpiar escombros inactivos
     auto it = escombros.begin();
 
     while (it != escombros.end()) {
@@ -138,15 +153,50 @@ void Nivel3Submarino::actualizarEscombros(float dt) {
         if (!escombro || !escombro->estaActivo()) {
             it = escombros.erase(it);
             escombrosEvitados++;
-            agregarPuntos(5); // 5 puntos por evitar
+            agregarPuntos(10);
         } else {
+            // Verificar colision con jugador
+            if (jugador && escombro->colisionaCon(jugador)) {
+                // Aplicar efecto segun tipo
+                Vector2D velJugador = jugador->getVelocidad();
+
+                switch (escombro->getTipo()) {
+                case TipoEscombro::MADERA: {
+                    // Flotacion: impulso hacia arriba
+                    velJugador.y -= 50.0f * dt;
+                    jugador->setVelocidad(velJugador);
+                    break;
+                }
+
+                case TipoEscombro::METAL_PESADO: {
+                    // Hunde: impulso hacia abajo
+                    velJugador.y += 80.0f * dt;
+                    jugador->setVelocidad(velJugador);
+                    jugador->recibirDanio(5.0f);
+                    break;
+                }
+
+                case TipoEscombro::SALVAVIDAS: {
+                    // Restaura oxigeno
+                    float oxigenoActual = jugador->getOxigeno();
+                    jugador->setOxigeno(oxigenoActual + 30.0f);
+                    agregarPuntos(50);
+                    escombro->destruir();
+                    break;
+                }
+
+                case TipoEscombro::NEUTRO: {
+                    // No hace nada especial, solo colision fisica
+                    break;
+                }
+                }
+            }
             ++it;
         }
     }
 }
 
 void Nivel3Submarino::aplicarFuerzasVortice() {
-    // Aplicar fuerza de vortices al jugador y escombros
     if (!jugador) return;
 
     for (auto* vortice : vortices) {
@@ -165,32 +215,38 @@ void Nivel3Submarino::aplicarFuerzasVortice() {
 }
 
 void Nivel3Submarino::spawnearVortice() {
-    // Spawnear vortice en posicion aleatoria
-    float x = 200.0f + (rand() % 800);
-    float y = 200.0f + (rand() % 600);
+    // Spawnear en rango visible o cerca
+    float x = 200.0f + (rand() % 1200);
 
-    Vortice* vortice = new Vortice(Vector2D(x, y));
+    // Spawnear en un rango vertical amplio
+    float y = profundidadActual + (rand() % 1000) - 500;
+
+    // Mantener dentro de limites
+    if (y < 100) y = 100;
+    if (y > altoNivel - 100) y = altoNivel - 100;
+
+    Vortice* vortice = new Vortice(Vector2D(x, y), 120.0f, 15.0f);
 
     motorFisica->agregarEntidad(vortice);
     vortices.push_back(vortice);
 }
 
 void Nivel3Submarino::spawnearEscombro() {
-    // Spawnear escombro aleatorio
-
-    // Tipo aleatorio
+    // Tipo aleatorio con probabilidades
     TipoEscombro tipo;
-    int tipoRand = rand() % 4;
-    switch (tipoRand) {
-    case 0: tipo = TipoEscombro::MADERA; break;
-    case 1: tipo = TipoEscombro::METAL_PESADO; break;
-    case 2: tipo = TipoEscombro::SALVAVIDAS; break;
-    default: tipo = TipoEscombro::NEUTRO; break;
-    }
+    int tipoRand = rand() % 10;
 
-    // Posicion aleatoria
-    float x = 100.0f + (rand() % 1000);
-    float y = 100.0f + (rand() % 800);
+    if (tipoRand < 4) tipo = TipoEscombro::MADERA;  // 40%
+    else if (tipoRand < 7) tipo = TipoEscombro::METAL_PESADO;  // 30%
+    else if (tipoRand < 9) tipo = TipoEscombro::SALVAVIDAS;  // 20%
+    else tipo = TipoEscombro::NEUTRO;  // 10%
+
+    // Posicion cerca del jugador
+    float x = 100.0f + (rand() % 1400);
+    float y = profundidadActual + (rand() % 800) - 400;
+
+    if (y < 50) y = 50;
+    if (y > altoNivel - 50) y = altoNivel - 50;
 
     Escombro* escombro = new Escombro(Vector2D(x, y), tipo);
 
@@ -205,29 +261,37 @@ void Nivel3Submarino::renderizar(QPainter& painter) {
 
     painter.save();
 
-    // ===== FONDO: OCEANO PROFUNDO =====
-    int profundidadRelativa = (int)((profundidadActual / profundidadInicial) * 255);
-    int azul = 150 - profundidadRelativa / 2;
-    painter.fillRect(0, 0, 800, 600, QColor(0, profundidadRelativa / 3, azul));
+    GestorSprites* gestor = GestorSprites::obtenerInstancia();
 
-    // Burbujas decorativas
-    painter.setPen(QPen(QColor(200, 200, 255, 100), 2));
-    for (int i = 0; i < 10; i++) {
-        int x = (rand() % 800);
-        int y = ((int)tiempoTranscurrido * 50 + i * 60) % 600;
-        painter.drawEllipse(x, y, 8, 8);
+    // ===== FONDO: OCEANO PROFUNDO =====
+    QPixmap fondoProfundo = gestor->getSprite("oceano_profundo");
+
+    if (!fondoProfundo.isNull()) {
+        QPixmap fondoEscalado = fondoProfundo.scaled(800, 600,
+                                                     Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        painter.drawPixmap(0, 0, fondoEscalado);
+    } else {
+        // Fallback: degradado oscuro
+        QLinearGradient gradiente(0, 0, 0, 600);
+        gradiente.setColorAt(0, QColor(0, 20, 40));
+        gradiente.setColorAt(1, QColor(0, 5, 15));
+        painter.fillRect(0, 0, 800, 600, gradiente);
     }
 
-    // ===== RENDERIZAR ENTIDADES (con camara) =====
+    // ===== OFFSET DE CAMARA =====
     Vector2D offsetCamara = camara->getPosicion();
     painter.translate(-offsetCamara.x, -offsetCamara.y);
 
-    // Linea de superficie (objetivo)
-    painter.setPen(QPen(QColor(255, 255, 0, 180), 3, Qt::DashLine));
-    painter.drawLine(0, profundidadObjetivo, anchoNivel, profundidadObjetivo);
-    painter.drawText(10 + offsetCamara.x, 30 + profundidadObjetivo, "SUPERFICIE");
+    // ===== SUPERFICIE (meta) =====
+    painter.setBrush(QColor(100, 200, 255, 180));
+    painter.setPen(QPen(QColor(255, 255, 100), 4));
+    painter.drawRect(0, -50, anchoNivel, 100);
 
-    // Renderizar todas las entidades
+    painter.setPen(Qt::white);
+    painter.setFont(QFont("Arial", 24, QFont::Bold));
+    painter.drawText(600, 20, "¡SUPERFICIE!");
+
+    // ===== RENDERIZAR ENTIDADES =====
     for (auto* entidad : motorFisica->getEntidades()) {
         if (entidad && entidad->estaActivo()) {
             entidad->renderizar(painter);
@@ -235,40 +299,13 @@ void Nivel3Submarino::renderizar(QPainter& painter) {
     }
 
     painter.restore();
-
-    // ===== HUD (sin offset de camara) =====
-    painter.setPen(Qt::white);
-    painter.drawText(10, 20, QString("Tiempo: %1 s").arg((int)tiempoTranscurrido));
-    painter.drawText(10, 40, QString("Profundidad: %1 / %2 m")
-                                 .arg((int)profundidadActual)
-                                 .arg((int)profundidadInicial));
-
-    // Barra de profundidad visual
-    int barraAltura = 200;
-    int barraPosY = 150;
-
-    painter.setBrush(QColor(50, 50, 50, 180));
-    painter.drawRect(10, barraPosY, 20, barraAltura);
-
-    // Progreso (invertido: arriba = superficie)
-    float progreso = 1.0f - (profundidadActual / profundidadInicial);
-    int alturaProgreso = (int)(barraAltura * progreso);
-
-    painter.setBrush(QColor(0, 255, 0, 200));
-    painter.drawRect(10, barraPosY + barraAltura - alturaProgreso, 20, alturaProgreso);
-
-    painter.setPen(Qt::white);
-    painter.drawText(10, 370, QString("Puntos: %1").arg(puntuacion));
-    painter.drawText(10, 390, QString("Vidas: %1").arg(jugador ? jugador->getVidas() : 0));
 }
 
 // ========== REINICIAR ==========
 
 void Nivel3Submarino::reiniciar() {
-    // Limpiar todo
     limpiar();
 
-    // Reiniciar variables
     completado = false;
     fallado = false;
     tiempoTranscurrido = 0.0f;
@@ -282,7 +319,6 @@ void Nivel3Submarino::reiniciar() {
     vortices.clear();
     escombros.clear();
 
-    // Reinicializar
     motorFisica = new MotorFisica();
     camara = new Camara(800, 600);
     camara->setLimites(Vector2D(0, 0), Vector2D(anchoNivel, altoNivel));
@@ -293,19 +329,14 @@ void Nivel3Submarino::reiniciar() {
 // ========== CONDICIONES ==========
 
 bool Nivel3Submarino::verificarVictoria() {
-    // Victoria: llegar a la superficie (y < 50)
     return jugador && jugador->getPosicion().y < 50.0f;
 }
 
 bool Nivel3Submarino::verificarDerrota() {
-    // Derrota: quedarse sin vidas
     return jugador && jugador->estaMuerto();
 }
 
-
-void Nivel3Submarino::manejarInput(int tecla, bool presionada) {
-    if (!jugador) return;
-
-    (void)tecla;
-    (void)presionada;
+void Nivel3Submarino::manejarInput(int /*tecla*/, bool /*presionada*/) {
+    // Metodo reservado para input adicional especifico del nivel
+    // Actualmente no se usa porque el input se maneja en GameWidget
 }

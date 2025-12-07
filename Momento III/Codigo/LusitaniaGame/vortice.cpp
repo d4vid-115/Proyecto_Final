@@ -16,16 +16,14 @@ Vortice::Vortice()
     radioInicial(150.0f),
     tiempoVida(8.0f),
     tiempoActual(0.0f),
-    rotacionActual(0.0f) {
+    rotacionActual(0.0f),
+    rangoAtraccion(300.0f) {
 
-    setDimensiones(300, 300); // Area grande de influencia
-
-    // Crear fisica de vortice
+    setDimensiones(radioInicial * 2, radioInicial * 2);
     fisicaVortice = new FisicaVortice(posicion, radioInicial, 0.15f);
-    setFisica(fisicaVortice);
-
     inicializarParticulas();
 }
+
 
 Vortice::Vortice(const Vector2D& centro)
     : Entidad(centro, TipoEntidad::VORTICE),
@@ -34,13 +32,11 @@ Vortice::Vortice(const Vector2D& centro)
     radioInicial(150.0f),
     tiempoVida(8.0f),
     tiempoActual(0.0f),
-    rotacionActual(0.0f) {
+    rotacionActual(0.0f),
+    rangoAtraccion(300.0f) {
 
-    setDimensiones(300, 300);
-
+    setDimensiones(radioInicial * 2, radioInicial * 2);
     fisicaVortice = new FisicaVortice(centro, radioInicial, 0.15f);
-    setFisica(fisicaVortice);
-
     inicializarParticulas();
 }
 
@@ -51,18 +47,15 @@ Vortice::Vortice(const Vector2D& centro, float radio, float vida)
     radioInicial(radio),
     tiempoVida(vida),
     tiempoActual(0.0f),
-    rotacionActual(0.0f) {
+    rotacionActual(0.0f),
+    rangoAtraccion(radio * 2.0f) {
 
     setDimensiones(radio * 2, radio * 2);
-
     fisicaVortice = new FisicaVortice(centro, radio, 0.15f);
-    setFisica(fisicaVortice);
-
     inicializarParticulas();
 }
 
 Vortice::~Vortice() {
-    // La clase base se encarga de liberar la fisica
     fisicaVortice = nullptr;
 }
 

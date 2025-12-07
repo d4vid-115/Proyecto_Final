@@ -126,22 +126,20 @@ void GameWidget::actualizar() {
             // ¡Nivel completado!
             timer->stop();
 
-            QMessageBox::information(this, "¡Nivel Completado!",
-                                     QString("¡Felicidades! Has completado el nivel %1\n"
-                                             "Puntuacion: %2")
-                                         .arg(motorJuego->getNumeroNivelActual())
-                                         .arg(nivel->getPuntuacion()));
+            int puntos = nivel->getPuntuacion();
+            int nivelNum = motorJuego->getNumeroNivelActual();
 
-            // Cargar siguiente nivel o victoria
+            // Emitir señal de victoria
+            emit victoria(puntos, nivelNum);
+
+            // Cargar siguiente nivel
             motorJuego->siguienteNivel();
 
             if (motorJuego->getEstado() == EstadoJuego::VICTORIA) {
-                QMessageBox::information(this, "¡VICTORIA!",
-                                         QString("¡Has completado todos los niveles!\n"
-                                                 "Puntuacion total: %1")
-                                             .arg(motorJuego->getPuntuacionTotal()));
+                // Victoria total - ya emitido arriba
                 volverAlMenu();
             } else {
+                // Continuar al siguiente nivel
                 timer->start();
             }
         }
@@ -150,13 +148,11 @@ void GameWidget::actualizar() {
             // Game Over
             timer->stop();
 
-            QMessageBox::information(this, "Game Over",
-                                     QString("Has perdido el nivel %1\n"
-                                             "¿Quieres intentarlo de nuevo?")
-                                         .arg(motorJuego->getNumeroNivelActual()));
+            int puntos = nivel->getPuntuacion();
+            int nivelNum = motorJuego->getNumeroNivelActual();
 
-            reiniciarJuego();
-            timer->start();
+            // Emitir señal de derrota
+            emit derrota(puntos, nivelNum);
         }
     }
 

@@ -1,4 +1,4 @@
-QT       += core gui
+QT       += core gui multimedia multimediawidgets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -12,6 +12,7 @@ SOURCES += \
     agenteia.cpp \
     camara.cpp \
     componentefisica.cpp \
+    configuracionsprites.cpp \
     datosia.cpp \
     enemigo.cpp \
     entidad.cpp \
@@ -19,6 +20,7 @@ SOURCES += \
     fisicaflotacion.cpp \
     fisicavortice.cpp \
     gamewidget.cpp \
+    gestorsonidos.cpp \
     gestorsprites.cpp \
     hud.cpp \
     jugador.cpp \
@@ -34,6 +36,9 @@ SOURCES += \
     npc.cpp \
     objetojuego.cpp \
     osciladorarmonico.cpp \
+    pantalladerrota.cpp \
+    pantallainicio.cpp \
+    pantallavictoria.cpp \
     sistemaaccion.cpp \
     sistemaaprendizaje.cpp \
     sistemapercepcion.cpp \
@@ -48,6 +53,7 @@ HEADERS += \
     agenteia.h \
     camara.h \
     componentefisica.h \
+    configuracionsprites.h \
     datosia.h \
     enemigo.h \
     entidad.h \
@@ -55,6 +61,7 @@ HEADERS += \
     fisicaflotacion.h \
     fisicavortice.h \
     gamewidget.h \
+    gestorsonidos.h \
     gestorsprites.h \
     hud.h \
     jugador.h \
@@ -69,6 +76,9 @@ HEADERS += \
     npc.h \
     objetojuego.h \
     osciladorarmonico.h \
+    pantalladerrota.h \
+    pantallainicio.h \
+    pantallavictoria.h \
     sistemaaccion.h \
     sistemaaprendizaje.h \
     sistemapercepcion.h \

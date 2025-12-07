@@ -1,4 +1,6 @@
 #include "submarino.h"
+#include "gestorsprites.h"
+#include "torpedo.h"
 #include <cmath>
 #include <cstdlib>
 #include <QColor>
@@ -110,57 +112,66 @@ void Submarino::renderizar(QPainter& painter) {
 
     painter.save();
 
+    // Obtener sprite
+    GestorSprites* gestor = GestorSprites::obtenerInstancia();
+    QPixmap spriteSubmarino = gestor->getSprite("submarino");
+
     // Calcular angulo de orientacion
     float angulo = 0.0f;
     if (velocidad.magnitud() > 0.1f) {
-        angulo = std::atan2(velocidad.y, velocidad.x);
+        angulo = std::atan2(velocidad.y, velocidad.x) * 180.0f / M_PI;
     }
 
-    // Trasladar y rotar
+    // Trasladar al centro del submarino
     painter.translate(posicion.x + ancho/2, posicion.y + alto/2);
-    painter.rotate(angulo * 180.0f / M_PI);
+    painter.rotate(angulo);
 
-    // Cuerpo del submarino (gris oscuro)
-    painter.setBrush(QColor(50, 50, 50));
-    painter.setPen(Qt::black);
-    painter.drawEllipse(-ancho/2, -alto/2, ancho, alto);
+    if (!spriteSubmarino.isNull()) {
+        // Usar sprite
+        QPixmap submarinEscalado = spriteSubmarino.scaled(ancho, alto,
+                                                          Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-    // Torre de mando
-    painter.setBrush(QColor(40, 40, 40));
-    painter.drawRect(-10, -alto/2 - 8, 20, 8);
+        painter.drawPixmap(-ancho/2, -alto/2, submarinEscalado);
+    } else {
+        // Fallback: dibujo manual
+        painter.setBrush(QColor(50, 50, 50));
+        painter.setPen(Qt::black);
+        painter.drawEllipse(-ancho/2, -alto/2, ancho, alto);
 
-    // Periscopio (si esta detectando)
-    if (estado == EstadoSubmarino::DETECTANDO ||
-        estado == EstadoSubmarino::ATACANDO) {
-        painter.setPen(QPen(QColor(100, 100, 100), 2));
-        painter.drawLine(0, -alto/2 - 8, 0, -alto/2 - 20);
+        // Torre de mando
+        painter.setBrush(QColor(40, 40, 40));
+        painter.drawRect(-10, -alto/2 - 8, 20, 8);
     }
 
     // Indicador de estado (luz)
     QColor colorEstado;
     switch (estado) {
     case EstadoSubmarino::PATRULLANDO:
-        colorEstado = QColor(0, 255, 0);   // Verde
+        colorEstado = QColor(0, 255, 0);
         break;
     case EstadoSubmarino::DETECTANDO:
-        colorEstado = QColor(255, 255, 0); // Amarillo
+        colorEstado = QColor(255, 255, 0);
         break;
     case EstadoSubmarino::ATACANDO:
-        colorEstado = QColor(255, 0, 0);   // Rojo
+        colorEstado = QColor(255, 0, 0);
         break;
     case EstadoSubmarino::EVADIENDO:
-        colorEstado = QColor(0, 100, 255); // Azul
+        colorEstado = QColor(0, 100, 255);
         break;
     }
+
     painter.setBrush(colorEstado);
+    painter.setPen(Qt::black);
     painter.drawEllipse(ancho/2 - 8, -4, 8, 8);
 
     painter.restore();
 
     // Barra de vida
     float porcentajeSalud = salud / saludMaxima;
+
     painter.setBrush(QColor(255, 0, 0));
     painter.drawRect(posicion.x, posicion.y - 10, ancho, 5);
+
     painter.setBrush(QColor(0, 255, 0));
     painter.drawRect(posicion.x, posicion.y - 10, ancho * porcentajeSalud, 5);
 }

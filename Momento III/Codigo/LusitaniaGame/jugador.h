@@ -13,6 +13,7 @@ private:
     int vidas;                // Vidas restantes (3)
     int puntuacion;           // Puntos acumulados
     float velocidadBase;      // Velocidad de movimiento (150 px/s)
+    float oxigeno;
 
     // Habilidad especial
     bool habilidadActiva;     // Si esta usando habilidad
@@ -33,6 +34,7 @@ public:
     // ========== METODOS HEREDADOS ==========
     void actualizar(float dt) override;
     void renderizar(QPainter& painter) override;
+    void renderizarNadador(QPainter& painter);
     void onColision(Entidad* otra) override;
 
     // ========== MOVIMIENTO ==========
@@ -59,11 +61,13 @@ public:
     int getVidas() const;
     int getPuntuacion() const;
     float getVelocidadBase() const;
+    float getOxigeno() const { return oxigeno; }
     bool estaInvencible() const;
 
     // ========== SETTERS ==========
     void setSalud(float s);
     void setVidas(int v);
+    void setOxigeno(float o) { oxigeno = o; }
 };
 
 #endif // JUGADOR_H

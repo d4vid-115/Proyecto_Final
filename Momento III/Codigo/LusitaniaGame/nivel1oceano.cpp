@@ -1,4 +1,5 @@
 #include "nivel1oceano.h"
+#include "gestorsprites.h"
 #include <QColor>
 #include <cstdlib>
 #include <cmath>
@@ -113,7 +114,7 @@ void Nivel1Oceano::actualizar(float dt) {
     }
 }
 
-void Nivel1Oceano::actualizarSubmarinos(float dt) {
+void Nivel1Oceano::actualizarSubmarinos(float /*dt*/) {
     // Actualizar cada submarino y hacer que disparen
     auto it = submarinos.begin();
 
@@ -144,7 +145,7 @@ void Nivel1Oceano::actualizarSubmarinos(float dt) {
     }
 }
 
-void Nivel1Oceano::actualizarTorpedos(float dt) {
+void Nivel1Oceano::actualizarTorpedos(float /*dt*/) {
     // Limpiar torpedos inactivos
     auto it = torpedos.begin();
 
@@ -196,34 +197,54 @@ void Nivel1Oceano::renderizar(QPainter& painter) {
 
     painter.save();
 
-    // ===== FONDO: OCEANO =====
-    painter.fillRect(0, 0, 800, 600, QColor(0, 50, 100));
+    // ===== FONDO: OCEANO ANIMADO =====
+    GestorSprites* gestor = GestorSprites::obtenerInstancia();
 
-    // Dibujar olas decorativas (animadas)
-    painter.setPen(QPen(QColor(0, 100, 150, 150), 2));
-    for (int y = 50; y < 600; y += 100) {
-        int offset = (int)(tiempoTranscurrido * 50) % 100;
-        for (int x = -offset; x < 800; x += 100) {
-            painter.drawArc(x, y, 100, 50, 0, 180 * 16);
-        }
+    // Obtener frame actual de la animacion del oceano
+    QPixmap fondoOceano = gestor->getFrameAnimacion("oceano", 0.016f);
+
+    if (!fondoOceano.isNull()) {
+        // Escalar fondo para cubrir toda la pantalla
+        QPixmap fondoEscalado = fondoOceano.scaled(800, 600,
+                                                   Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        painter.drawPixmap(0, 0, fondoEscalado);
+    } else {
+        // Fallback: color solido si no hay sprite
+        painter.fillRect(0, 0, 800, 600, QColor(0, 50, 100));
     }
 
-    // ===== RENDERIZAR ENTIDADES (con camara) =====
+    // ===== RENDERIZAR CON CAMARA =====
     Vector2D offsetCamara = camara->getPosicion();
     painter.translate(-offsetCamara.x, -offsetCamara.y);
 
-    // Dibujar barco Lusitania (grande, en el fondo)
-    painter.setBrush(QColor(100, 50, 0));
-    painter.setPen(Qt::black);
-    painter.drawRect(posicionBarco.x - 100, posicionBarco.y - 40, 200, 80);
+    // ===== BARCO LUSITANIA (sprite) =====
+    QPixmap spriteLusitania = gestor->getSprite("lusitania");
 
-    // Chimeneas del Lusitania
-    painter.setBrush(QColor(50, 25, 0));
-    painter.drawRect(posicionBarco.x - 60, posicionBarco.y - 60, 20, 20);
-    painter.drawRect(posicionBarco.x - 20, posicionBarco.y - 60, 20, 20);
-    painter.drawRect(posicionBarco.x + 20, posicionBarco.y - 60, 20, 20);
+    if (!spriteLusitania.isNull()) {
+        // Escalar barco a tamaño apropiado (200x80 aprox)
+        QPixmap barcoEscalado = spriteLusitania.scaled(200, 80,
+                                                       Qt::KeepAspectRatio, Qt::SmoothTransformation);
 
-    // Renderizar todas las entidades del motor de fisica
+        // Dibujar centrado en posicionBarco
+        painter.drawPixmap(
+            posicionBarco.x - 100,  // Centrar horizontalmente
+            posicionBarco.y - 40,   // Centrar verticalmente
+            barcoEscalado
+            );
+    } else {
+        // Fallback: dibujo manual original
+        painter.setBrush(QColor(100, 50, 0));
+        painter.setPen(Qt::black);
+        painter.drawRect(posicionBarco.x - 100, posicionBarco.y - 40, 200, 80);
+
+        // Chimeneas
+        painter.setBrush(QColor(50, 25, 0));
+        painter.drawRect(posicionBarco.x - 60, posicionBarco.y - 60, 20, 20);
+        painter.drawRect(posicionBarco.x - 20, posicionBarco.y - 60, 20, 20);
+        painter.drawRect(posicionBarco.x + 20, posicionBarco.y - 60, 20, 20);
+    }
+
+    // ===== RENDERIZAR ENTIDADES (submarinos, torpedos, jugador) =====
     for (auto* entidad : motorFisica->getEntidades()) {
         if (entidad && entidad->estaActivo()) {
             entidad->renderizar(painter);
@@ -231,15 +252,6 @@ void Nivel1Oceano::renderizar(QPainter& painter) {
     }
 
     painter.restore();
-
-    // ===== HUD (sin offset de camara) =====
-    painter.setPen(Qt::white);
-    painter.drawText(10, 20, QString("Tiempo: %1 / %2 s")
-                                 .arg((int)tiempoTranscurrido)
-                                 .arg((int)tiempoLimite));
-    painter.drawText(10, 40, QString("Puntos: %1").arg(puntuacion));
-    painter.drawText(10, 60, QString("Submarinos destruidos: %1").arg(submarinosDestruidos));
-    painter.drawText(10, 80, QString("Vidas: %1").arg(jugador ? jugador->getVidas() : 0));
 }
 
 // ========== REINICIAR ==========
@@ -282,10 +294,6 @@ bool Nivel1Oceano::verificarDerrota() {
 
 // ========== INPUT ==========
 
-void Nivel1Oceano::manejarInput(int tecla, bool presionada) {
-    if (!jugador) return;
-
+void Nivel1Oceano::manejarInput(int /*tecla*/, bool /*presionada*/) {
     // Este metodo sera llamado por GameWidget
-    (void)tecla;
-    (void)presionada;
 }

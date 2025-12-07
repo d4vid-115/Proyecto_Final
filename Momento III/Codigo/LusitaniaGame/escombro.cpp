@@ -204,10 +204,6 @@ bool Escombro::estaHundiendo() const {
 
 // ========== GETTERS ==========
 
-TipoEscombro Escombro::getTipoEscombro() const {
-    return tipoEscombro;
-}
-
 float Escombro::getDensidad() const {
     return densidad;
 }
